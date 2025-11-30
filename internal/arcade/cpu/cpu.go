@@ -70,7 +70,11 @@ func (c *CPU) String() string {
 	b.WriteString(" E:" + fmt.Sprintf("%-2X", c.e))
 	b.WriteString(" H:" + fmt.Sprintf("%-2X", c.h))
 	b.WriteString(" L:" + fmt.Sprintf("%-2X", c.l))
-	b.WriteString(" F:" + fmt.Sprintf("%08b", c.f))
+	b.WriteString(" S:" + fmt.Sprintf("%01b", c.getS()))
+	b.WriteString(" Z:" + fmt.Sprintf("%01b", c.getZ()))
+	b.WriteString(" AC:" + fmt.Sprintf("%01b", c.getAC()))
+	b.WriteString(" P:" + fmt.Sprintf("%01b", c.getP()))
+	b.WriteString(" CY:" + fmt.Sprintf("%01b", c.getCY()))
 
 	return b.String()
 }
@@ -573,7 +577,7 @@ func (c *CPU) Step() uint64 {
 
 		c.setS(value>>7&1 == 1)
 		c.setZ(value == 0)
-		c.setA(value&0x0F != 0x0F)
+		c.setAC(value&0x0F != 0x0F)
 		c.setP(value&1 == 0)
 
 		states += 5
@@ -592,7 +596,7 @@ func (c *CPU) Step() uint64 {
 			res = uint32(c.getHL()) + uint32(c.sp)
 		}
 
-		c.setC(res > math.MaxUint16)
+		c.setCY(res > math.MaxUint16)
 		c.setHL(uint16(res))
 
 		states += 10
@@ -604,9 +608,9 @@ func (c *CPU) Step() uint64 {
 
 		c.setS(res>>7&1 == 1)
 		c.setZ(res == 0)
-		c.setA(false)
+		c.setAC(false)
 		c.setP(res&1 == 0)
-		c.setC(false)
+		c.setCY(false)
 
 		c.a = res
 
@@ -618,9 +622,9 @@ func (c *CPU) Step() uint64 {
 
 		c.setS(res>>7&1 == 1)
 		c.setZ(res == 0)
-		c.setA(c.a&0x0F < value&0x0F)
+		c.setAC(c.a&0x0F < value&0x0F)
 		c.setP(res&1 == 0)
-		c.setC(c.a < value)
+		c.setCY(c.a < value)
 
 		states += 7
 
@@ -672,7 +676,7 @@ func (c *CPU) Step() uint64 {
 		return states
 
 	case "RRC":
-		c.setC(c.a&0x1 == 1)
+		c.setCY(c.a&0x1 == 1)
 		c.a = c.a >> 1
 		states += 4
 
@@ -683,9 +687,9 @@ func (c *CPU) Step() uint64 {
 
 		c.setS(res>>7&1 == 1)
 		c.setZ(res == 0)
-		c.setA(c.a&0x0F+value&0x0F > 0x0F)
+		c.setAC(c.a&0x0F+value&0x0F > 0x0F)
 		c.setP(res&1 == 0)
-		c.setC(uint16(c.a)+uint16(value) > 0xFF)
+		c.setCY(uint16(c.a)+uint16(value) > 0xFF)
 
 		c.a = res
 		states += 7
@@ -697,10 +701,11 @@ func (c *CPU) Step() uint64 {
 
 		c.setS(res>>7&1 == 1)
 		c.setZ(res == 0)
-		c.setA(c.a&0x0F+value&0x0F > 0x0F)
+		c.setAC(false)
 		c.setP(res&1 == 0)
-		c.setC(uint16(c.a)+uint16(value) > 0xFF)
+		c.setCY(false)
 
+		c.a = res
 		states += 4
 
 	default:
@@ -779,7 +784,7 @@ func (c *CPU) getZ() uint8 {
 	return c.f >> 6 & 1
 }
 
-func (c *CPU) getA() uint8 {
+func (c *CPU) getAC() uint8 {
 	return c.f >> 4 & 1
 }
 
@@ -787,7 +792,7 @@ func (c *CPU) getP() uint8 {
 	return c.f >> 2 & 1
 }
 
-func (c *CPU) getC() uint8 {
+func (c *CPU) getCY() uint8 {
 	return c.f & 1
 }
 
@@ -807,7 +812,7 @@ func (c *CPU) setZ(b bool) {
 	}
 }
 
-func (c *CPU) setA(b bool) {
+func (c *CPU) setAC(b bool) {
 	if b {
 		c.f = c.f | 0x10
 	} else {
@@ -823,7 +828,7 @@ func (c *CPU) setP(b bool) {
 	}
 }
 
-func (c *CPU) setC(b bool) {
+func (c *CPU) setCY(b bool) {
 	if b {
 		c.f = c.f | 0x01
 	} else {
