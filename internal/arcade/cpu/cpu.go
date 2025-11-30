@@ -3,6 +3,7 @@ package cpu
 import (
 	"fmt"
 	"log"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -13,8 +14,8 @@ type CPU struct {
 
 	Running bool
 
-	inst   string
-	states uint64
+	inst string
+	sc   uint64
 
 	pc uint16
 	sp uint16
@@ -52,7 +53,7 @@ func (c *CPU) String() string {
 	var b strings.Builder
 
 	b.WriteString(fmt.Sprintf("%-12s", c.inst))
-	b.WriteString(" CYCLES:" + fmt.Sprintf("%-5s", strconv.FormatUint(uint64(c.states), 10)))
+	b.WriteString(" SC:" + fmt.Sprintf("%-5s", strconv.FormatUint(uint64(c.sc), 10)))
 	b.WriteString(" PC:" + fmt.Sprintf("%-4s", strconv.FormatUint(uint64(c.pc), 16)))
 	b.WriteString(" SP:" + fmt.Sprintf("%-4s", strconv.FormatUint(uint64(c.sp), 16)))
 	b.WriteString(" B:" + fmt.Sprintf("%-2s", strconv.FormatUint(uint64(c.b), 16)))
@@ -77,10 +78,12 @@ func (c *CPU) Step() {
 	lo := opcode & 0x0F
 	hi := opcode >> 4
 
+	prevSC, prevPC := c.sc, c.pc
+
 	switch opcode {
 	case 0x00, 0x10, 0x20, 0x30, 0x08, 0x18, 0x28, 0x38:
 		inst = "NOP"
-		c.states += 4
+		c.sc += 4
 		c.pc++
 
 	case 0x01, 0x11, 0x21, 0x31:
@@ -102,7 +105,7 @@ func (c *CPU) Step() {
 			inst = "LXI SP, " + strconv.FormatUint(uint64(value), 16)
 			c.sp = value
 		}
-		c.states += 10
+		c.sc += 10
 		c.pc += 3
 
 	case 0x0A, 0x1A:
@@ -118,29 +121,31 @@ func (c *CPU) Step() {
 		}
 
 		c.acc = value
-		c.states += 7
+		c.sc += 7
 		c.pc++
 
 	case 0xC2:
 		addr := c.nextU16()
 		inst = "JNZ " + strconv.FormatUint(uint64(addr), 16)
-		c.states += 10
+
 		if c.getZ() != 0 {
 			c.pc = addr
 		} else {
 			c.pc += 3
 		}
 
+		c.sc += 10
+
 	case 0xC3:
 		addr := c.nextU16()
 		inst = "JMP " + strconv.FormatUint(uint64(addr), 16)
-		c.states += 10
+		c.sc += 10
 		c.pc = addr
 
 	case 0xCD, 0xDD, 0xED, 0xFD:
 		addr := c.nextU16()
 		inst = "CALL " + strconv.FormatUint(uint64(addr), 16)
-		c.states += 17
+		c.sc += 17
 		c.push(c.pc)
 		c.pc = addr
 
@@ -148,6 +153,7 @@ func (c *CPU) Step() {
 		inst = "RET"
 		c.pc = c.pop()
 		c.pc++
+		c.sc += 10
 
 	case 0x06, 0x16, 0x26, 0x36, 0x0E, 0x1E, 0x2E, 0x3E:
 		inst = "MVI "
@@ -183,14 +189,14 @@ func (c *CPU) Step() {
 			if lo == 0x6 {
 				inst += "M, " + strconv.FormatUint(uint64(value), 16)
 				c.WriteMem(c.getHL(), value)
-				c.states += 3
+				c.sc += 3
 			} else {
 				inst += "A, " + strconv.FormatUint(uint64(value), 16)
 				c.acc = value
 			}
 		}
 
-		c.states += 7
+		c.sc += 7
 		c.pc += 2
 
 	case 0x4C, 0x5C, 0x6C, 0x7C:
@@ -214,7 +220,7 @@ func (c *CPU) Step() {
 
 		inst += "H"
 
-		c.states += 5
+		c.sc += 5
 		c.pc++
 
 	case 0x4F, 0x5F, 0x6F, 0x7F:
@@ -238,7 +244,7 @@ func (c *CPU) Step() {
 
 		inst += "A"
 
-		c.states += 5
+		c.sc += 5
 		c.pc++
 
 	case 0x47, 0x57, 0x67, 0x77:
@@ -258,12 +264,12 @@ func (c *CPU) Step() {
 		case 7:
 			inst += "M, "
 			c.WriteMem(c.getHL(), value)
-			c.states += 2
+			c.sc += 2
 		}
 
 		inst += "A"
 
-		c.states += 5
+		c.sc += 5
 		c.pc++
 
 	case 0x03, 0x13, 0x23, 0x33:
@@ -293,7 +299,7 @@ func (c *CPU) Step() {
 			c.sp++
 		}
 
-		c.states += 5
+		c.sc += 5
 		c.pc++
 
 	case 0x05, 0x15, 0x25, 0x35:
@@ -317,7 +323,7 @@ func (c *CPU) Step() {
 			value = c.ReadMem(c.getHL()) - 1
 			c.WriteMem(c.getHL(), value)
 
-			c.states += 5
+			c.sc += 5
 		}
 
 		c.setS(value>>7&1 == 1)
@@ -325,7 +331,33 @@ func (c *CPU) Step() {
 		c.setA(value&0x0F != 0x0F)
 		c.setP(value&1 == 0)
 
-		c.states += 5
+		c.sc += 5
+		c.pc++
+
+	case 0x09, 0x19, 0x29, 0x39:
+		var res uint32
+
+		inst = "DAD "
+
+		switch hi {
+		case 0:
+			inst += "BC"
+			res = uint32(c.getHL()) + uint32(c.getBC())
+		case 1:
+			inst += "DE"
+			res = uint32(c.getHL()) + uint32(c.getDE())
+		case 2:
+			inst += "HL"
+			res = uint32(c.getHL()) + uint32(c.getHL())
+		case 3:
+			inst += "SP"
+			res = uint32(c.getHL()) + uint32(c.sp)
+		}
+
+		c.setC(res > math.MaxUint16)
+		c.setHL(uint16(res))
+
+		c.sc += 10
 		c.pc++
 
 	case 0xE6:
@@ -344,7 +376,7 @@ func (c *CPU) Step() {
 
 		c.acc = res
 
-		c.states += 7
+		c.sc += 7
 		c.pc += 2
 
 	case 0xFE:
@@ -358,7 +390,7 @@ func (c *CPU) Step() {
 		c.setP(res&1 == 0)
 		c.setC(c.acc < value)
 
-		c.states += 7
+		c.sc += 7
 		c.pc += 2
 
 	case 0xC5, 0xD5, 0xE5, 0xF5:
@@ -379,16 +411,51 @@ func (c *CPU) Step() {
 			c.push(c.getPSW())
 		}
 
-		c.states += 11
+		c.sc += 11
 		c.pc++
 
+	case 0xC1, 0xD1, 0xE1, 0xF1:
+		inst = "POP "
+
+		switch hi {
+		case 0xC:
+			inst += "BC"
+			c.setBC(c.pop())
+		case 0xD:
+			inst += "DE"
+			c.setDE(c.pop())
+		case 0xE:
+			inst += "HL"
+			c.setHL(c.pop())
+		case 0xF:
+			inst += "PSW"
+			c.setPSW(c.pop())
+		}
+
+		c.sc += 10
+		c.pc++
+
+	case 0xEB:
+		inst = "XCHG HL, DE"
+		c.h, c.l, c.d, c.e = c.d, c.e, c.h, c.l
+		c.pc++
+		c.sc += 4
+
 	default:
-		panic("unimplemented opcode " + strconv.FormatUint(uint64(opcode), 16))
+		log.Fatalf("unimplemented opcode %02x", opcode)
 	}
 
 	c.inst = inst
 
 	log.Println(c)
+
+	if prevPC == c.pc {
+		log.Fatal("program counter not incremented")
+	}
+
+	if prevSC == c.sc {
+		log.Fatal("state counter not incremented")
+	}
 }
 
 func (c *CPU) nextU8() uint8 {
@@ -412,10 +479,6 @@ func (c *CPU) pop() uint16 {
 	return value
 }
 
-func (c *CPU) getPSW() uint16 {
-	return uint16(c.acc)<<8 | uint16(c.flags)
-}
-
 func (c *CPU) getBC() uint16 {
 	return uint16(c.b)<<8 | uint16(c.c)
 }
@@ -426,6 +489,30 @@ func (c *CPU) getDE() uint16 {
 
 func (c *CPU) getHL() uint16 {
 	return uint16(c.h)<<8 | uint16(c.l)
+}
+
+func (c *CPU) getPSW() uint16 {
+	return uint16(c.acc)<<8 | uint16(c.flags)
+}
+
+func (c *CPU) setBC(bc uint16) {
+	c.b = uint8(bc >> 8)
+	c.c = uint8(bc)
+}
+
+func (c *CPU) setDE(de uint16) {
+	c.b = uint8(de >> 8)
+	c.c = uint8(de)
+}
+
+func (c *CPU) setHL(hl uint16) {
+	c.b = uint8(hl >> 8)
+	c.c = uint8(hl)
+}
+
+func (c *CPU) setPSW(hl uint16) {
+	c.acc = uint8(hl >> 8)
+	c.flags = uint8(hl)
 }
 
 func (c *CPU) getS() uint8 {
