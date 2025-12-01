@@ -56,6 +56,7 @@ func Run(ctx context.Context, romDirPath string, options ...Option) error {
 	}
 
 	i := 0
+
 	for _, id := range []string{"h", "g", "f", "e"} {
 		romBytes, err := os.ReadFile(filepath.Join(romDirPath, "invaders."+id))
 		if err != nil {
@@ -76,8 +77,10 @@ func Run(ctx context.Context, romDirPath string, options ...Option) error {
 			if time.Since(lastCPUPeriod) <= time.Second {
 				if !loggedThrottled {
 					fmt.Println("============ throttled ===============")
+
 					loggedThrottled = true
 				}
+
 				continue
 			} else {
 				lastCPUPeriod = time.Now()
@@ -85,6 +88,7 @@ func Run(ctx context.Context, romDirPath string, options ...Option) error {
 				loggedThrottled = false
 			}
 		}
+
 		a.cpuSC += a.cpu.Step()
 	}
 

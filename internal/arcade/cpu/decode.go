@@ -23,6 +23,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 	switch opcode {
 	default:
 		length = 1
+
 		switch opcode {
 		case 0x00, 0x10, 0x20, 0x30, 0x08, 0x18, 0x28, 0x38:
 			inst = "NOP"
@@ -35,15 +36,18 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0x03, 0x13, 0x23, 0x33:
 			inst = "INX"
+
 			op1 = doubleOperandOrderSP[(opcode-0x3)/0x10]
 			if opcode == 0x33 {
 				op1 = "SP"
 			}
+
 			states = 5
 
 		case 0x04, 0x14, 0x24, 0x34, 0x0C, 0x1C, 0x2C, 0x3C:
 			inst = "INR"
 			op1 = operandOrder[(opcode-0x4)/0x8]
+
 			states = 5
 			if op1 == "M" {
 				states = 10
@@ -52,6 +56,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 		case 0x05, 0x15, 0x25, 0x35, 0x0D, 0x1D, 0x2D, 0x3D:
 			inst = "DCR"
 			op1 = operandOrder[(opcode-0x4)/0x8]
+
 			states = 5
 			if op1 == "M" {
 				states = 10
@@ -75,10 +80,12 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0x09, 0x19, 0x29, 0x39:
 			inst = "DAD"
+
 			op1 = doubleOperandOrderSP[(opcode-0x9)/0x10]
 			if opcode == 0x39 {
 				op1 = "SP"
 			}
+
 			states = 10
 
 		case 0x0A, 0x1A:
@@ -88,10 +95,12 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0x0B, 0x1B, 0x2B, 0x3B:
 			inst = "DCX"
+
 			op1 = operandOrder[(opcode-0xB)/0x8]
 			if opcode == 0x3B {
 				op1 = "SP"
 			}
+
 			states = 4
 
 		case 0x0F:
@@ -114,6 +123,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 			inst = "MOV"
 			op1 = operandOrder[(opcode-0x40)/8]
 			op2 = operandOrder[(opcode>>4)%8]
+
 			states = 5
 			if op1 == "M" {
 				states = 7
@@ -126,6 +136,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 		case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87:
 			inst = "ADD"
 			op1 = operandOrder[opcode-0x80]
+
 			states = 4
 			if op1 == "M" {
 				states = 7
@@ -134,6 +145,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 		case 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F:
 			inst = "ADC"
 			op1 = operandOrder[opcode-0x88]
+
 			states = 4
 			if op1 == "M" {
 				states = 7
@@ -142,6 +154,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 		case 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97:
 			inst = "SUB"
 			op1 = operandOrder[opcode-0x90]
+
 			states = 4
 			if op1 == "M" {
 				states = 7
@@ -150,6 +163,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 		case 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F:
 			inst = "SBB"
 			op1 = operandOrder[opcode-0x98]
+
 			states = 4
 			if op1 == "M" {
 				states = 7
@@ -158,6 +172,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 		case 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7:
 			inst = "ANA"
 			op1 = operandOrder[opcode-0xA0]
+
 			states = 4
 			if op1 == "M" {
 				states = 7
@@ -166,6 +181,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 		case 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF:
 			inst = "XRA"
 			op1 = operandOrder[opcode-0xA8]
+
 			states = 4
 			if op1 == "M" {
 				states = 7
@@ -174,6 +190,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 		case 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7:
 			inst = "ORA"
 			op1 = operandOrder[opcode-0xB0]
+
 			states = 4
 			if op1 == "M" {
 				states = 7
@@ -182,6 +199,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 		case 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
 			inst = "CMP"
 			op1 = operandOrder[opcode-0xB8]
+
 			states = 4
 			if op1 == "M" {
 				states = 7
@@ -189,6 +207,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xC0:
 			inst = "RNZ"
+
 			states = 5
 			if c.getZF() == 0 {
 				states = 11
@@ -196,6 +215,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xD0:
 			inst = "RNC"
+
 			states = 5
 			if c.getCYF() == 0 {
 				states = 11
@@ -203,6 +223,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xE0:
 			inst = "RPO"
+
 			states = 5
 			if c.getPF() == 0 {
 				states = 11
@@ -210,6 +231,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xF0:
 			inst = "RP"
+
 			states = 5
 			if c.getSF() == 0 {
 				states = 11
@@ -217,10 +239,12 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xC1, 0xD1, 0xE1, 0xF1:
 			inst = "POP"
+
 			op1 = doubleOperandOrderAF[(opcode-0xC1)/0x10]
 			if opcode == 0xF1 {
 				op1 = "AF"
 			}
+
 			states = 10
 
 		case 0xE3:
@@ -233,10 +257,12 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xC5, 0xD5, 0xE5, 0xF5:
 			inst = "PUSH"
+
 			op1 = doubleOperandOrderAF[(opcode-0xC5)/0x10]
 			if opcode == 0xF5 {
 				op1 = "AF"
 			}
+
 			states = 11
 
 		case 0xC7, 0xD7, 0xE7, 0xF7, 0xCF, 0xDF, 0xEF, 0xFF:
@@ -246,6 +272,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xC8:
 			inst = "RZ"
+
 			states = 5
 			if c.getSF() == 1 {
 				states = 11
@@ -253,6 +280,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xD8:
 			inst = "RC"
+
 			states = 5
 			if c.getCYF() == 1 {
 				states = 11
@@ -260,6 +288,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xE8:
 			inst = "RPE"
+
 			states = 5
 			if c.getPF() == 1 {
 				states = 11
@@ -267,6 +296,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xF8:
 			inst = "RM"
+
 			states = 5
 			if c.getSF() == 1 {
 				states = 11
@@ -294,7 +324,6 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		default:
 			panic("undecoded opcode: " + strconv.FormatUint(uint64(opcode), 16))
-
 		}
 	case 0xD3, 0x06, 0x16, 0x26, 0x36, 0xC6, 0xD6, 0xE6, 0xF6, 0xDB, 0x0E, 0x1E, 0x2E, 0x3E, 0xCE, 0xDE, 0xEE, 0xFE:
 		op1 = fmt.Sprintf("%02X", c.ReadMem(c.pc+1))
@@ -309,6 +338,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 			inst = "MVI"
 			op2 = op1
 			op1 = operandOrder[(opcode-0x06)/8]
+
 			states = 7
 			if op1 == "M" {
 				states = 10
@@ -395,6 +425,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xC4:
 			inst = "CNZ"
+
 			states = 11
 			if c.getZF() == 0 {
 				states = 17
@@ -402,6 +433,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xD4:
 			inst = "CNC"
+
 			states = 11
 			if c.getCYF() == 0 {
 				states = 17
@@ -409,6 +441,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xE4:
 			inst = "CPO"
+
 			states = 11
 			if c.getPF() == 0 {
 				states = 17
@@ -416,6 +449,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xF4:
 			inst = "CP"
+
 			if c.getSF() == 0 {
 				states = 17
 			}
@@ -446,6 +480,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xCC:
 			inst = "CZ"
+
 			states = 11
 			if c.getZF() == 1 {
 				states = 17
@@ -453,6 +488,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xDC:
 			inst = "CC"
+
 			states = 11
 			if c.getCYF() == 1 {
 				states = 17
@@ -460,6 +496,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xEC:
 			inst = "CPE"
+
 			states = 11
 			if c.getPF() == 1 {
 				states = 17
@@ -467,6 +504,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xFC:
 			inst = "CM"
+
 			states = 11
 			if c.getSF() == 1 {
 				states = 17

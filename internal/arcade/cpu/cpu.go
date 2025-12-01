@@ -164,6 +164,7 @@ func (c *CPU) Step() uint64 {
 
 	case "CALL":
 		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+
 		c.push(c.pc + 2)
 		c.pc = addr
 
@@ -317,7 +318,7 @@ func (c *CPU) Step() uint64 {
 		log.Fatal("program counter not incremented")
 	}
 
-	c.sc += uint64(states)
+	c.sc += states
 
 	if prevSC >= c.sc {
 		log.Fatal("state counter not incremented")
