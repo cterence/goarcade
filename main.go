@@ -66,7 +66,7 @@ func main() {
 					c.ReadMem = func(offset uint16) uint8 { return romBytes[i+offset] }
 
 					for i < uint16(len(romBytes)) {
-						inst, op1, op2, instLength := c.DecodeInst()
+						inst, op1, op2, instLength, _ := c.DecodeInst()
 						var b strings.Builder
 
 						b.WriteString(fmt.Sprintf("%04x: ", i))

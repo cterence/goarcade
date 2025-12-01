@@ -74,30 +74,43 @@ func (c *CPU) String() string {
 	b.WriteString(" E:" + fmt.Sprintf("%-2X", c.e))
 	b.WriteString(" H:" + fmt.Sprintf("%-2X", c.h))
 	b.WriteString(" L:" + fmt.Sprintf("%-2X", c.l))
-	b.WriteString(" S:" + fmt.Sprintf("%01b", c.getS()))
-	b.WriteString(" Z:" + fmt.Sprintf("%01b", c.getZ()))
-	b.WriteString(" AC:" + fmt.Sprintf("%01b", c.getAC()))
-	b.WriteString(" P:" + fmt.Sprintf("%01b", c.getP()))
-	b.WriteString(" CY:" + fmt.Sprintf("%01b", c.getCY()))
+	b.WriteString(" S:" + fmt.Sprintf("%01b", c.getSF()))
+	b.WriteString(" Z:" + fmt.Sprintf("%01b", c.getZF()))
+	b.WriteString(" AC:" + fmt.Sprintf("%01b", c.getACF()))
+	b.WriteString(" P:" + fmt.Sprintf("%01b", c.getPF()))
+	b.WriteString(" CY:" + fmt.Sprintf("%01b", c.getCYF()))
 
 	return b.String()
 }
 
 func (c *CPU) Step() uint64 {
 	// Fetch instruction
-	inst, op1, op2, instLength := c.DecodeInst()
-	prevSC, prevPC, states := c.sc, c.pc, uint64(0)
+	inst, op1, op2, instLength, states := c.DecodeInst()
+	prevSC, prevPC := c.sc, c.pc
 
 	// convenience maps
-	regMap := map[string]*uint8{
-		"A": &c.a,
-		"F": &c.f,
-		"B": &c.b,
-		"C": &c.c,
-		"D": &c.d,
-		"E": &c.e,
-		"H": &c.h,
-		"L": &c.l,
+	getOpMap := map[string]func() uint8{
+		"A": c.getA,
+		"F": c.getF,
+		"B": c.getB,
+		"C": c.getC,
+		"D": c.getD,
+		"E": c.getE,
+		"H": c.getH,
+		"L": c.getL,
+		"M": c.getM,
+	}
+
+	setOpMap := map[string]func(uint8){
+		"A": c.setA,
+		"F": c.setF,
+		"B": c.setB,
+		"C": c.setC,
+		"D": c.setD,
+		"E": c.setE,
+		"H": c.setH,
+		"L": c.setL,
+		"M": c.setM,
 	}
 
 	getDoubleRegMap := map[string]func() uint16{
@@ -118,33 +131,26 @@ func (c *CPU) Step() uint64 {
 
 	switch inst {
 	case "NOP":
-		states += 4
 
 	case "LXI":
 		value := uint16(lib.Must(strconv.ParseUint(op2, 16, 16)))
 		setDoubleRegMap[op1](value)
 
-		states += 10
-
 	case "STA":
 		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
 		c.WriteMem(addr, c.a)
-		states += 13
 
 	case "LDA":
 		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
 		c.a = c.ReadMem(addr)
-		states += 13
 
 	case "LDAX":
 		c.a = c.ReadMem(getDoubleRegMap[op1]())
-		states += 7
 
 	case "JNZ":
 		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
-		states += 10
 
-		if c.getZ() != 0 {
+		if c.getZF() != 0 {
 			c.pc = addr
 
 			return states
@@ -152,14 +158,12 @@ func (c *CPU) Step() uint64 {
 
 	case "JMP":
 		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
-		states += 10
 		c.pc = addr
 
 		return states
 
 	case "CALL":
 		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
-		states += 17
 		c.push(c.pc + 2)
 		c.pc = addr
 
@@ -167,14 +171,11 @@ func (c *CPU) Step() uint64 {
 
 	case "RET":
 		c.pc = c.pop()
-		states += 10
 
 		return states
 
 	case "RP":
-		states += 5
-		if c.getS() == 0 {
-			states += 6
+		if c.getSF() == 0 {
 			c.pc = c.pop()
 
 			return states
@@ -182,203 +183,129 @@ func (c *CPU) Step() uint64 {
 
 	case "MVI":
 		value := uint8(lib.Must(strconv.ParseUint(op2, 16, 8)))
-		if op1 == "M" {
-			c.WriteMem(c.getHL(), value)
-			states += 3
-		} else {
-			*regMap[op1] = value
-		}
-
-		states += 7
+		setOpMap[op1](value)
 
 	case "MOV":
-		var src uint8
-		if op2 == "M" {
-			src = c.ReadMem(c.getHL())
-			states += 2
-		} else {
-			src = *regMap[op2]
-		}
-
-		if op1 == "M" {
-			c.WriteMem(c.getHL(), src)
-			states += 2
-		} else {
-			*regMap[op1] = src
-		}
-		states += 5
+		setOpMap[op1](getOpMap[op2]())
 
 	case "INX":
 		v := getDoubleRegMap[op1]() + 1
 		setDoubleRegMap[op1](v)
-		states += 5
 
 	case "DCR":
-		var value uint8
+		value := getOpMap[op1]() - 1
+		setOpMap[op1](value)
 
-		if op1 == "M" {
-			value = c.ReadMem(c.getHL())
-			c.WriteMem(c.getHL(), value)
-			states += 5
-		} else {
-			value = *regMap[op1]
-		}
-
-		c.setS(value>>7&1 == 1)
-		c.setZ(value == 0)
-		c.setAC(value&0x0F != 0x0F)
-		c.setP(value&1 == 0)
-
-		states += 5
+		c.setSF(value>>7&1 == 1)
+		c.setZF(value == 0)
+		c.setACF(value&0x0F != 0x0F)
+		c.setPF(value&1 == 0)
 
 	case "DAD":
 		res := uint32(c.getHL()) + uint32(getDoubleRegMap[op1]())
 
-		c.setCY(res > math.MaxUint16)
+		c.setCYF(res > math.MaxUint16)
 		c.setHL(uint16(res))
-
-		states += 10
 
 	case "ANI":
 		value := uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
-
 		res := c.a & value
 
-		c.setS(res&0x80 == 0x80)
-		c.setZ(res == 0)
-		c.setAC(false)
-		c.setP(res&1 == 0)
-		c.setCY(false)
+		c.setSF(res&0x80 == 0x80)
+		c.setZF(res == 0)
+		c.setACF(false)
+		c.setPF(res&1 == 0)
+		c.setCYF(false)
 
 		c.a = res
-
-		states += 7
 
 	case "CPI":
 		value := uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
 		res := c.a - value
 
-		c.setS(res&0x80 == 0x80)
-		c.setZ(res == 0)
-		c.setAC(c.a&0x0F < value&0x0F)
-		c.setP(res&1 == 0)
-		c.setCY(c.a < value)
-
-		states += 7
+		c.setSF(res&0x80 == 0x80)
+		c.setZF(res == 0)
+		c.setACF(c.a&0x0F < value&0x0F)
+		c.setPF(res&1 == 0)
+		c.setCYF(c.a < value)
 
 	case "PUSH":
 		c.push(getDoubleRegMap[op1]())
-		states += 11
 
 	case "POP":
 		setDoubleRegMap[op1](c.pop())
-		states += 10
 
 	case "XCHG":
 		c.h, c.l, c.d, c.e = c.d, c.e, c.h, c.l
-		states += 4
 
 	case "OUT":
 		value := uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
 		c.WriteMem(uint16(value)<<8|uint16(value), c.a)
 
-		states += 10
-
 	case "RST":
 		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
-		states += 11
 		c.pc = addr
 
 		return states
 
 	case "RRC":
-		c.setCY(c.a&0x1 == 1)
+		c.setCYF(c.a&0x1 == 1)
 		c.a = c.a >> 1
-		states += 4
 
 	case "ADI":
 		value := uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
 
 		res := c.a + value
 
-		c.setS(res&0x80 == 0x80)
-		c.setZ(res == 0)
-		c.setAC(c.a&0x0F+value&0x0F > 0x0F)
-		c.setP(res&1 == 0)
-		c.setCY(uint16(c.a)+uint16(value) > 0xFF)
+		c.setSF(res&0x80 == 0x80)
+		c.setZF(res == 0)
+		c.setACF(c.a&0x0F+value&0x0F > 0x0F)
+		c.setPF(res&1 == 0)
+		c.setCYF(uint16(c.a)+uint16(value) > 0xFF)
 
 		c.a = res
-		states += 7
 
 	case "XRA":
-		var value uint8
-
-		if op1 == "M" {
-			value = c.ReadMem(c.getHL())
-		} else {
-			value = *regMap[op1]
-		}
-
+		value := getOpMap[op1]()
 		res := c.a ^ value
 
-		c.setS(res&0x80 == 0x80)
-		c.setZ(res == 0)
-		c.setAC(false)
-		c.setP(res&1 == 0)
-		c.setCY(false)
+		c.setSF(res&0x80 == 0x80)
+		c.setZF(res == 0)
+		c.setACF(false)
+		c.setPF(res&1 == 0)
+		c.setCYF(false)
 
 		c.a = res
-		states += 4
 
 	case "ANA":
-		var value uint8
-
-		if op1 == "M" {
-			value = c.ReadMem(c.getHL())
-		} else {
-			value = *regMap[op1]
-		}
-
+		value := getOpMap[op1]()
 		res := c.a & value
 
-		c.setS(res&0x80 == 0x80)
-		c.setZ(res == 0)
-		c.setAC(false)
-		c.setP(res&1 == 0)
-		c.setCY(false)
+		c.setSF(res&0x80 == 0x80)
+		c.setZF(res == 0)
+		c.setACF(false)
+		c.setPF(res&1 == 0)
+		c.setCYF(false)
 
 		c.a = res
-		states += 4
 
 	case "ORA":
-		var value uint8
-
-		if op1 == "M" {
-			value = c.ReadMem(c.getHL())
-		} else {
-			value = *regMap[op1]
-		}
-
+		value := getOpMap[op1]()
 		res := c.a | value
 
-		c.setS(res&0x80 == 0x80)
-		c.setZ(res == 0)
-		c.setAC(false)
-		c.setP(res&1 == 0)
-		c.setCY(false)
+		c.setSF(res&0x80 == 0x80)
+		c.setZF(res == 0)
+		c.setACF(false)
+		c.setPF(res&1 == 0)
+		c.setCYF(false)
 
 		c.a = res
-		states += 4
 
 	case "EI":
 		c.interrupts = true
-		states += 4
-		c.pc++
 
 	case "DI":
 		c.interrupts = true
-		states += 4
-		c.pc++
 
 	default:
 		log.Fatalf("unimplemented inst %s", inst)
@@ -410,108 +337,4 @@ func (c *CPU) pop() uint16 {
 	c.sp += 2
 
 	return value
-}
-
-func (c *CPU) getBC() uint16 {
-	return uint16(c.b)<<8 | uint16(c.c)
-}
-
-func (c *CPU) getDE() uint16 {
-	return uint16(c.d)<<8 | uint16(c.e)
-}
-
-func (c *CPU) getHL() uint16 {
-	return uint16(c.h)<<8 | uint16(c.l)
-}
-
-func (c *CPU) getAF() uint16 {
-	return uint16(c.a)<<8 | uint16(c.f)
-}
-
-func (c *CPU) getSP() uint16 {
-	return c.sp
-}
-
-func (c *CPU) setBC(v uint16) {
-	c.b = uint8(v >> 8)
-	c.c = uint8(v)
-}
-
-func (c *CPU) setDE(v uint16) {
-	c.b = uint8(v >> 8)
-	c.c = uint8(v)
-}
-
-func (c *CPU) setHL(v uint16) {
-	c.b = uint8(v >> 8)
-	c.c = uint8(v)
-}
-
-func (c *CPU) setAF(v uint16) {
-	c.a = uint8(v >> 8)
-	c.f = uint8(v)
-}
-
-func (c *CPU) setSP(v uint16) {
-	c.sp = v
-}
-
-func (c *CPU) getS() uint8 {
-	return c.f >> 7 & 1
-}
-
-func (c *CPU) getZ() uint8 {
-	return c.f >> 6 & 1
-}
-
-func (c *CPU) getAC() uint8 {
-	return c.f >> 4 & 1
-}
-
-func (c *CPU) getP() uint8 {
-	return c.f >> 2 & 1
-}
-
-func (c *CPU) getCY() uint8 {
-	return c.f & 1
-}
-
-func (c *CPU) setS(b bool) {
-	if b {
-		c.f = c.f | 0x80
-	} else {
-		c.f = c.f & 0x7F
-	}
-}
-
-func (c *CPU) setZ(b bool) {
-	if b {
-		c.f = c.f | 0x40
-	} else {
-		c.f = c.f & 0xBF
-	}
-}
-
-func (c *CPU) setAC(b bool) {
-	if b {
-		c.f = c.f | 0x10
-	} else {
-		c.f = c.f & 0xEF
-	}
-}
-
-func (c *CPU) setP(b bool) {
-	if b {
-		c.f = c.f | 0x04
-	} else {
-		c.f = c.f & 0xFB
-	}
-}
-
-func (c *CPU) setCY(b bool) {
-	if b {
-		c.f = c.f | 0x01
-	} else {
-		c.f = c.f & 0xFE
-	}
 }
