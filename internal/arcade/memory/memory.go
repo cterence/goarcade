@@ -1,11 +1,15 @@
 package memory
 
+const (
+	MEMORY_SIZE uint32 = 0x10000
+)
+
 type Memory struct {
-	memory [10000]uint8
+	memory [MEMORY_SIZE]uint8
 }
 
 func (m *Memory) Init() {
-	m.memory = [10000]uint8{}
+	m.memory = [MEMORY_SIZE]uint8{}
 }
 
 func (m *Memory) Read(addr uint16) uint8 {

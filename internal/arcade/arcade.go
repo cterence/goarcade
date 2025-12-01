@@ -6,7 +6,7 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
-	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/cterence/space-invaders/internal/arcade/cpu"
@@ -34,7 +34,7 @@ func WithDebug(debug bool) Option {
 	}
 }
 
-func Run(ctx context.Context, romDirPath string, options ...Option) error {
+func Run(ctx context.Context, romPaths []string, options ...Option) error {
 	a := arcade{
 		cpu:    &cpu.CPU{},
 		memory: &memory.Memory{},
@@ -51,15 +51,14 @@ func Run(ctx context.Context, romDirPath string, options ...Option) error {
 	a.cpu.ReadMem = a.memory.Read
 	a.cpu.WriteMem = a.memory.Write
 
-	// Load Space Invaders rom
-	if romDirPath == "" {
-		return errors.New("empty rom directory path")
+	if len(romPaths) == 0 {
+		return errors.New("no rom passed to emulator")
 	}
 
 	i := 0
 
-	for _, id := range []string{"h", "g", "f", "e"} {
-		romBytes, err := os.ReadFile(filepath.Join(romDirPath, "invaders."+id))
+	for _, p := range romPaths {
+		romBytes, err := os.ReadFile(p)
 		if err != nil {
 			return fmt.Errorf("failed to read rom file: %w", err)
 		}
@@ -91,6 +90,65 @@ func Run(ctx context.Context, romDirPath string, options ...Option) error {
 		}
 
 		a.cpuSC += a.cpu.Step()
+	}
+
+	return nil
+}
+
+func Disassemble(romPaths []string) error {
+	if len(romPaths) == 0 {
+		return errors.New("no rom passed to emulator")
+	}
+
+	romBytes := []byte{}
+
+	for _, p := range romPaths {
+		romPartBytes, err := os.ReadFile(p)
+		if err != nil {
+			return fmt.Errorf("failed to read rom file: %w", err)
+		}
+
+		romBytes = append(romBytes, romPartBytes...)
+	}
+
+	var i uint16
+
+	c := cpu.CPU{}
+	c.Init()
+	c.ReadMem = func(offset uint16) uint8 { return romBytes[i+offset] }
+
+	for i < uint16(len(romBytes)) {
+		inst, op1, op2, instLength, _ := c.DecodeInst()
+
+		var b strings.Builder
+
+		b.WriteString(fmt.Sprintf("%04x: ", i))
+
+		if instLength == 1 {
+			b.WriteString(fmt.Sprintf("%02x          ", romBytes[i]))
+		}
+
+		if instLength == 2 {
+			b.WriteString(fmt.Sprintf("%02x %02x       ", romBytes[i], romBytes[i+1]))
+		}
+
+		if instLength == 3 {
+			b.WriteString(fmt.Sprintf("%02x %02x %02x    ", romBytes[i], romBytes[i+1], romBytes[i+2]))
+		}
+
+		b.WriteString(inst)
+
+		if op1 != "" {
+			b.WriteString(" " + op1)
+
+			if op2 != "" {
+				b.WriteString(", " + op2)
+			}
+		}
+
+		fmt.Println(b.String())
+
+		i += instLength
 	}
 
 	return nil

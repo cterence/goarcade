@@ -53,7 +53,7 @@ func (c *CPU) Init(options ...Option) {
 	c.h = 0
 	c.l = 0
 	c.a = 0
-	c.f = 0
+	c.f = 2
 	c.interrupts = false
 
 	for _, o := range options {
