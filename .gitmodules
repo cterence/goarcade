@@ -1,0 +1,3 @@
+[submodule "sub/8080"]
+	path = sub/8080
+	url = git@github.com:superzazu/8080.git
