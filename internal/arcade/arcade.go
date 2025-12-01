@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"time"
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	cpuFreq = 2000000
+	cpuFreq = 2_000_000
 )
 
 type arcade struct {

@@ -34,3 +34,4 @@ go.work.sum
 invaders/
 tmp/
 .direnv/
+space-invaders

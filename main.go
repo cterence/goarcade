@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,8 +26,22 @@ func main() {
 		ArgsUsage: "[rom directory path]",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
+				Name:    "pprof",
+				Aliases: []string{"p"},
+				Usage:   "run webserver on localhost:6060 (for pprof)",
+				Action: func(_ context.Context, _ *cli.Command, _ bool) error {
+					go func() {
+						log.Println(http.ListenAndServe("localhost:6060", nil))
+					}()
+
+					return nil
+				},
+			},
+
+			&cli.BoolFlag{
 				Name:        "debug",
 				Aliases:     []string{"d"},
+				Usage:       "print debug logs",
 				Destination: &debug,
 			},
 		},
