@@ -13,6 +13,7 @@ import (
 func main() {
 	var (
 		debug bool
+		stop  uint64
 	)
 
 	cmd := &cli.Command{
@@ -39,12 +40,20 @@ func main() {
 				Usage:       "print debug logs",
 				Destination: &debug,
 			},
+
+			&cli.Uint64Flag{
+				Name:        "stop",
+				Aliases:     []string{"s"},
+				Usage:       "stop after _ states",
+				Destination: &stop,
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			return arcade.Run(
 				ctx,
 				cmd.Args().Slice(),
 				arcade.WithDebug(debug),
+				arcade.WithStop(stop),
 			)
 		},
 		Commands: []*cli.Command{

@@ -44,7 +44,7 @@ func WithDebug(debug bool) Option {
 
 func (c *CPU) Init(options ...Option) {
 	c.Running = true
-	c.pc = 0
+	c.pc = 0x100
 	c.sp = 0
 	c.b = 0
 	c.c = 0
@@ -89,6 +89,7 @@ func (c *CPU) Step() uint64 {
 	prevSC, prevPC := c.sc, c.pc
 
 	// convenience maps
+	// TODO: functions with switch and params rather than maps
 	getOpMap := map[string]func() uint8{
 		"A": c.getA,
 		"F": c.getF,
@@ -150,7 +151,70 @@ func (c *CPU) Step() uint64 {
 	case "JNZ":
 		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
 
-		if c.getZF() != 0 {
+		if c.getZF() == 0 {
+			c.pc = addr
+
+			return states
+		}
+
+	case "JPO":
+		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+
+		if c.getPF() == 0 {
+			c.pc = addr
+
+			return states
+		}
+
+	case "JPE":
+		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+
+		if c.getPF() == 1 {
+			c.pc = addr
+
+			return states
+		}
+
+	case "JZ":
+		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+
+		if c.getZF() == 1 {
+			c.pc = addr
+
+			return states
+		}
+
+	case "JNC":
+		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+
+		if c.getCYF() == 0 {
+			c.pc = addr
+
+			return states
+		}
+
+	case "JC":
+		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+
+		if c.getCYF() == 1 {
+			c.pc = addr
+
+			return states
+		}
+
+	case "JP":
+		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+
+		if c.getSF() == 0 {
+			c.pc = addr
+
+			return states
+		}
+
+	case "JM":
+		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+
+		if c.getSF() == 1 {
 			c.pc = addr
 
 			return states
@@ -170,8 +234,18 @@ func (c *CPU) Step() uint64 {
 
 		return states
 
+	case "CP":
+		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+
+		if c.getZF() == 0 {
+			c.push(c.pc + 2)
+			c.pc = addr
+
+			return states
+		}
+
 	case "RET":
-		c.pc = c.pop()
+		c.pc = c.pop() + 1
 
 		return states
 
@@ -190,8 +264,10 @@ func (c *CPU) Step() uint64 {
 		setOpMap[op1](getOpMap[op2]())
 
 	case "INX":
-		v := getDoubleRegMap[op1]() + 1
-		setDoubleRegMap[op1](v)
+		setDoubleRegMap[op1](getDoubleRegMap[op1]() + 1)
+
+	case "DCX":
+		setDoubleRegMap[op1](getDoubleRegMap[op1]() - 1)
 
 	case "DCR":
 		value := getOpMap[op1]() - 1
@@ -208,20 +284,15 @@ func (c *CPU) Step() uint64 {
 		c.setCYF(res > math.MaxUint16)
 		c.setHL(uint16(res))
 
-	case "ANI":
-		value := uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
-		res := c.a & value
+	case "CMP", "CPI":
+		var value uint8
 
-		c.setSF(res&0x80 == 0x80)
-		c.setZF(res == 0)
-		c.setACF(false)
-		c.setPF(res&1 == 0)
-		c.setCYF(false)
+		if inst == "CMP" {
+			value = getOpMap[op1]()
+		} else {
+			value = uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+		}
 
-		c.a = res
-
-	case "CPI":
-		value := uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
 		res := c.a - value
 
 		c.setSF(res&0x80 == 0x80)
@@ -229,6 +300,12 @@ func (c *CPU) Step() uint64 {
 		c.setACF(c.a&0x0F < value&0x0F)
 		c.setPF(res&1 == 0)
 		c.setCYF(c.a < value)
+
+	case "CMA":
+		c.a = 0xFF - c.a
+
+	case "CMC":
+		c.setCYF(c.getCYF() == 0)
 
 	case "PUSH":
 		c.push(getDoubleRegMap[op1]())
@@ -239,9 +316,24 @@ func (c *CPU) Step() uint64 {
 	case "XCHG":
 		c.h, c.l, c.d, c.e = c.d, c.e, c.h, c.l
 
+	case "XTHL":
+		sp := c.sp
+		c.sp = c.getHL()
+		c.setHL(sp)
+
+	case "SPHL":
+		c.sp = c.getHL()
+
+	case "PCHL":
+		c.pc = c.getHL()
+
+	case "IN":
+		value := uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+		c.a = c.portIn(value)
+
 	case "OUT":
 		value := uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
-		c.WriteMem(uint16(value)<<8|uint16(value), c.a)
+		c.portOut(value)
 
 	case "RST":
 		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
@@ -250,13 +342,29 @@ func (c *CPU) Step() uint64 {
 		return states
 
 	case "RRC":
-		c.setCYF(c.a&0x1 == 1)
-		c.a = c.a >> 1
+		sb := c.a & 0x1
+		c.setCYF(sb == 1)
+		c.a = c.a>>1 | sb<<7
 
-	case "ADI":
-		value := uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+	case "RLC":
+		sb := c.a & 0x80 >> 7
+		c.setCYF(sb == 1)
+		c.a = c.a<<1 | sb
+
+	case "ADD", "ADC", "ADI", "ACI":
+		var value uint8
+
+		if inst == "ADD" || inst == "ADC" {
+			value = getOpMap[op1]()
+		} else {
+			value = uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+		}
 
 		res := c.a + value
+
+		if inst == "ADC" || inst == "ACI" {
+			res += c.getCYF()
+		}
 
 		c.setSF(res&0x80 == 0x80)
 		c.setZF(res == 0)
@@ -266,8 +374,38 @@ func (c *CPU) Step() uint64 {
 
 		c.a = res
 
-	case "XRA":
-		value := getOpMap[op1]()
+	case "SUB", "SBB", "SUI", "SBI":
+		var value uint8
+
+		if inst == "SUB" || inst == "SBB" {
+			value = getOpMap[op1]()
+		} else {
+			value = uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+		}
+
+		res := c.a - value
+
+		if inst == "SBB" || inst == "SBI" {
+			res -= c.getCYF()
+		}
+
+		c.setSF(res&0x80 == 0x80)
+		c.setZF(res == 0)
+		c.setACF(c.a&0x0F < value&0x0F)
+		c.setPF(res&1 == 0)
+		c.setCYF(c.a < value)
+
+		c.a = res
+
+	case "XRA", "XRI":
+		var value uint8
+
+		if inst == "XRA" {
+			value = getOpMap[op1]()
+		} else {
+			value = uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+		}
+
 		res := c.a ^ value
 
 		c.setSF(res&0x80 == 0x80)
@@ -278,8 +416,15 @@ func (c *CPU) Step() uint64 {
 
 		c.a = res
 
-	case "ANA":
-		value := getOpMap[op1]()
+	case "ANA", "ANI":
+		var value uint8
+
+		if inst == "ANA" {
+			value = getOpMap[op1]()
+		} else {
+			value = uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+		}
+
 		res := c.a & value
 
 		c.setSF(res&0x80 == 0x80)
@@ -290,8 +435,15 @@ func (c *CPU) Step() uint64 {
 
 		c.a = res
 
-	case "ORA":
-		value := getOpMap[op1]()
+	case "ORA", "ORI":
+		var value uint8
+
+		if inst == "ORA" {
+			value = getOpMap[op1]()
+		} else {
+			value = uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+		}
+
 		res := c.a | value
 
 		c.setSF(res&0x80 == 0x80)
@@ -302,11 +454,43 @@ func (c *CPU) Step() uint64 {
 
 		c.a = res
 
+	case "INR":
+		res := getOpMap[op1]() + 1
+		c.setSF(res&0x80 == 0x80)
+		c.setZF(res == 0)
+		c.setACF(false)
+		c.setPF(res&1 == 0)
+		setOpMap[op1](res)
+
+	case "DAA":
+		res := c.a
+		if c.a&0x0F > 0x09 || c.getACF() == 1 {
+			res += 0x06
+		}
+
+		if c.a&0xF0 > 0x90 || c.getCYF() == 1 {
+			res += 0x60
+		}
+
+		c.a = res
+
 	case "EI":
 		c.interrupts = true
 
 	case "DI":
 		c.interrupts = true
+
+	case "STAX":
+		c.WriteMem(getDoubleRegMap[op1](), c.a)
+
+	case "SHLD":
+		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+		c.WriteMem(addr, c.getL())
+		c.WriteMem(addr+1, c.getH())
+
+	case "LHLD":
+		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+		c.setHL(uint16(c.ReadMem(addr+1))<<8 | uint16(c.ReadMem(addr)))
 
 	default:
 		log.Fatalf("unimplemented inst %s", inst)
@@ -338,4 +522,39 @@ func (c *CPU) pop() uint16 {
 	c.sp += 2
 
 	return value
+}
+
+func (c *CPU) portIn(_ uint8) uint8 {
+	return 0x0
+}
+
+func (c *CPU) portOut(portNumber uint8) {
+	switch portNumber {
+	case 0:
+		c.Running = false
+	case 1:
+		switch c.c {
+		case 2:
+			fmt.Printf("%c", c.e)
+		case 9:
+			var (
+				char   byte
+				offset uint16
+			)
+
+			char = c.ReadMem(c.getDE() + offset)
+			for char != '$' {
+				fmt.Printf("%c", char)
+
+				offset++
+				char = c.ReadMem(c.getDE() + offset)
+			}
+
+			fmt.Println()
+		default:
+			fmt.Printf("unimplemented out operation for port 1: %02x", c.c)
+		}
+	default:
+		fmt.Printf("unimplemented out port: %02x", portNumber)
+	}
 }

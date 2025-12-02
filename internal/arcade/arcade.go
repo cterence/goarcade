@@ -24,6 +24,7 @@ type arcade struct {
 	cpuOpts []cpu.Option
 
 	cpuSC uint64
+	stop  uint64
 }
 
 type Option func(*arcade)
@@ -31,6 +32,12 @@ type Option func(*arcade)
 func WithDebug(debug bool) Option {
 	return func(a *arcade) {
 		a.cpuOpts = append(a.cpuOpts, cpu.WithDebug(debug))
+	}
+}
+
+func WithStop(stop uint64) Option {
+	return func(a *arcade) {
+		a.stop = stop
 	}
 }
 
@@ -55,7 +62,7 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		return errors.New("no rom passed to emulator")
 	}
 
-	i := 0
+	i := 0x100
 
 	for _, p := range romPaths {
 		romBytes, err := os.ReadFile(p)
@@ -69,10 +76,19 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		}
 	}
 
+	// inject "out 0,a" at 0x0000 (signal to stop the test)
+	a.memory.Write(0x0000, 0xD3)
+	a.memory.Write(0x0001, 0x00)
+
+	// inject "out 1,a" at 0x0005 (signal to output some characters)
+	a.memory.Write(0x0005, 0xD3)
+	a.memory.Write(0x0006, 0x01)
+	a.memory.Write(0x0007, 0xC9)
+
 	lastCPUPeriod := time.Now()
 	loggedThrottled := false
 
-	for a.cpu.Running {
+	for a.cpu.Running && (a.stop == 0 || a.cpuSC < a.stop) {
 		if a.cpuSC >= cpuFreq {
 			if time.Since(lastCPUPeriod) <= time.Second {
 				if !loggedThrottled {

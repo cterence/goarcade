@@ -113,13 +113,13 @@ func (c *CPU) setBC(v uint16) {
 }
 
 func (c *CPU) setDE(v uint16) {
-	c.b = uint8(v >> 8)
-	c.c = uint8(v)
+	c.d = uint8(v >> 8)
+	c.e = uint8(v)
 }
 
 func (c *CPU) setHL(v uint16) {
-	c.b = uint8(v >> 8)
-	c.c = uint8(v)
+	c.h = uint8(v >> 8)
+	c.l = uint8(v)
 }
 
 func (c *CPU) setSP(v uint16) {
