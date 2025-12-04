@@ -90,7 +90,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0x0A, 0x1A:
 			inst = "LDAX"
-			op1 = doubleOperandOrderAF[(opcode-0xA)/0x8]
+			op1 = doubleOperandOrderAF[(opcode-0xA)/0x10]
 			states = 7
 
 		case 0x0B, 0x1B, 0x2B, 0x3B:
@@ -101,7 +101,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 				op1 = "SP"
 			}
 
-			states = 4
+			states = 5
 
 		case 0x0F:
 			inst = "RRC"
@@ -122,10 +122,10 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 		case 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F, 0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x77, 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7E, 0x7F:
 			inst = "MOV"
 			op1 = operandOrder[(opcode-0x40)/8]
-			op2 = operandOrder[(opcode>>4)%8]
+			op2 = operandOrder[opcode%8]
 
 			states = 5
-			if op1 == "M" {
+			if op1 == "M" || op2 == "M" {
 				states = 7
 			}
 
@@ -274,7 +274,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 			inst = "RZ"
 
 			states = 5
-			if c.getSF() == 1 {
+			if c.getZF() == 1 {
 				states = 11
 			}
 
@@ -316,7 +316,7 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 
 		case 0xEB:
 			inst = "XCHG"
-			states = 5
+			states = 4
 
 		case 0xFB:
 			inst = "EI"
@@ -450,13 +450,14 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 		case 0xF4:
 			inst = "CP"
 
+			states = 11
 			if c.getSF() == 0 {
 				states = 17
 			}
 
 		case 0x2A:
 			inst = "LHLD"
-			states = 11
+			states = 16
 
 		case 0x3A:
 			inst = "LDA"
@@ -517,19 +518,6 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint64) {
 		default:
 			panic("undecoded opcode: " + strconv.FormatUint(uint64(opcode), 16))
 		}
-	}
-
-	fullInst := fmt.Sprintf("%-4s", inst)
-
-	if op1 != "" {
-		fullInst += " " + op1
-		if op2 != "" {
-			fullInst += ", " + op2
-		}
-	}
-
-	if c.debug {
-		fmt.Printf("%02X %02X %02X %-13s%s\n", c.ReadMem(c.pc), c.ReadMem(c.pc+1), c.ReadMem(c.pc+2), fullInst, c)
 	}
 
 	return inst, op1, op2, length, states
