@@ -191,3 +191,95 @@ func (c *CPU) setCYF(b bool) {
 		c.f = c.f & 0xFE
 	}
 }
+
+func (c *CPU) getOp(op string) uint8 {
+	switch op {
+	case "A":
+		return c.getA()
+	case "F":
+		return c.getF()
+	case "B":
+		return c.getB()
+	case "C":
+		return c.getC()
+	case "D":
+		return c.getD()
+	case "E":
+		return c.getE()
+	case "H":
+		return c.getH()
+	case "L":
+		return c.getL()
+	case "M":
+		return c.getM()
+	default:
+		panic("unsupported operand: " + op)
+	}
+}
+
+func (c *CPU) setOp(op string, v uint8) {
+	switch op {
+	case "A":
+		c.setA(v)
+	case "F":
+		c.setF(v)
+	case "B":
+		c.setB(v)
+	case "C":
+		c.setC(v)
+	case "D":
+		c.setD(v)
+	case "E":
+		c.setE(v)
+	case "H":
+		c.setH(v)
+	case "L":
+		c.setL(v)
+	case "M":
+		c.setM(v)
+	default:
+		panic("unsupported operand: " + op)
+	}
+}
+
+func (c *CPU) getDoubleOp(op string) uint16 {
+	switch op {
+	case "AF":
+		return c.getAF()
+	case "BC":
+		return c.getBC()
+	case "DE":
+		return c.getDE()
+	case "HL":
+		return c.getHL()
+	case "SP":
+		return c.getSP()
+	default:
+		panic("unsupported operand: " + op)
+	}
+}
+
+func (c *CPU) setDoubleOp(op string, v uint16) {
+	switch op {
+	case "AF":
+		c.setAF(v)
+	case "BC":
+		c.setBC(v)
+	case "DE":
+		c.setDE(v)
+	case "HL":
+		c.setHL(v)
+	case "SP":
+		c.setSP(v)
+	default:
+		panic("unsupported operand: " + op)
+	}
+}
+
+func (c *CPU) setFlags(s, z, ac, p, cy bool) {
+	c.setSF(s)
+	c.setZF(z)
+	c.setACF(ac)
+	c.setPF(p)
+	c.setCYF(cy)
+}

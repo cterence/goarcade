@@ -7,14 +7,13 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/cterence/space-invaders/internal/arcade/cpu"
 	"github.com/cterence/space-invaders/internal/arcade/memory"
 )
 
 const (
-	cpuFreq = 2_000_000
+	CPU_FREQ = 2_000_000
 )
 
 type arcade struct {
@@ -85,27 +84,34 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 	a.memory.Write(0x0006, 0x01)
 	a.memory.Write(0x0007, 0xC9)
 
-	lastCPUPeriod := time.Now()
-	loggedThrottled := false
+	// lastCPUPeriod := time.Now()
+	// loggedThrottled := false
+	milestone := uint64(1000000)
+	sc := uint64(0)
 
 	for a.cpu.Running && (a.stop == 0 || a.cpuSC < a.stop) {
-		if a.cpuSC >= cpuFreq {
-			if time.Since(lastCPUPeriod) <= time.Second {
-				if !loggedThrottled {
-					fmt.Println("============ throttled ===============")
+		// if sc >= CPU_FREQ {
+		// 	if time.Since(lastCPUPeriod) <= time.Second {
+		// 		if !loggedThrottled {
+		// 			fmt.Println("============ throttled ===============")
 
-					loggedThrottled = true
-				}
+		// 			loggedThrottled = true
+		// 		}
 
-				continue
-			} else {
-				lastCPUPeriod = time.Now()
-				a.cpuSC -= cpuFreq
-				loggedThrottled = false
-			}
-		}
-
+		// 		continue
+		// 	} else {
+		// 		lastCPUPeriod = time.Now()
+		// 		loggedThrottled = false
+		// 		sc = 0
+		// 	}
+		// }
 		a.cpuSC += a.cpu.Step()
+
+		sc += a.cpuSC
+		if a.cpuSC > milestone {
+			fmt.Printf("States milestone reached: %d\n", milestone)
+			milestone += 1000000
+		}
 	}
 
 	return nil
