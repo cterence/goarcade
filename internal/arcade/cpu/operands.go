@@ -45,7 +45,7 @@ func (c *CPU) setA(v uint8) {
 }
 
 func (c *CPU) setF(v uint8) {
-	c.f = v
+	c.f = v&0xD7 | 0x02
 }
 
 func (c *CPU) setB(v uint8) {
@@ -103,23 +103,23 @@ func (c *CPU) getSP() uint16 {
 // Set
 
 func (c *CPU) setAF(v uint16) {
-	c.a = uint8(v >> 8)
-	c.f = uint8(v)
+	c.setA(uint8(v >> 8))
+	c.setF(uint8(v))
 }
 
 func (c *CPU) setBC(v uint16) {
-	c.b = uint8(v >> 8)
-	c.c = uint8(v)
+	c.setB(uint8(v >> 8))
+	c.setC(uint8(v))
 }
 
 func (c *CPU) setDE(v uint16) {
-	c.d = uint8(v >> 8)
-	c.e = uint8(v)
+	c.setD(uint8(v >> 8))
+	c.setE(uint8(v))
 }
 
 func (c *CPU) setHL(v uint16) {
-	c.h = uint8(v >> 8)
-	c.l = uint8(v)
+	c.setH(uint8(v >> 8))
+	c.setL(uint8(v))
 }
 
 func (c *CPU) setSP(v uint16) {

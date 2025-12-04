@@ -7,8 +7,6 @@ import (
 	"math/bits"
 	"strconv"
 	"strings"
-
-	"github.com/cterence/space-invaders/internal/arcade/lib"
 )
 
 type CPU struct {
@@ -71,15 +69,18 @@ func (c *CPU) String() string {
 	b.WriteString(", DE: " + fmt.Sprintf("%04X", c.getDE()))
 	b.WriteString(", HL: " + fmt.Sprintf("%04X", c.getHL()))
 	b.WriteString(", SP: " + fmt.Sprintf("%04X", c.sp))
-	b.WriteString(", CYC: " + fmt.Sprintf("%-6d", c.sc))
+	b.WriteString(", CYC: " + strconv.FormatUint(c.sc, 10))
 
 	return b.String()
 }
 
-func (c *CPU) Step() uint64 {
+func (c *CPU) Step() uint8 {
 	// Fetch instruction
 	inst, op1, op2, instLength, states := c.DecodeInst()
 	prevSC, prevPC := c.sc, c.pc
+
+	imm1, imm2 := c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
+	imm16 := uint16(imm2)<<8 | uint16(imm1)
 
 	if c.debug {
 		// fmt.Printf("%s (%02X %02X %02X %02X) %-13s\n", c, c.ReadMem(c.pc), c.ReadMem(c.pc+1), c.ReadMem(c.pc+2), c.ReadMem(c.pc+3), inst+" "+op1+" "+op2)
@@ -90,103 +91,100 @@ func (c *CPU) Step() uint64 {
 	case "NOP":
 
 	case "LXI":
-		value := uint16(lib.Must(strconv.ParseUint(op2, 16, 16)))
-		c.setDoubleOp(op1, value)
+		c.setDoubleOp(op1, imm16)
 
 	case "STA":
-		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
-		c.WriteMem(addr, c.a)
+		c.WriteMem(imm16, c.a)
 
 	case "LDA":
-		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
-		c.a = c.ReadMem(addr)
+		c.a = c.ReadMem(imm16)
 
 	case "LDAX":
 		c.a = c.ReadMem(c.getDoubleOp(op1))
 
 	case "JMP":
-		c.jump(op1, true)
+		c.jump(imm16, true)
 
 	case "JP":
-		c.jump(op1, c.getSF() == 0)
+		c.jump(imm16, c.getSF() == 0)
 
 	case "JM":
-		c.jump(op1, c.getSF() == 1)
+		c.jump(imm16, c.getSF() == 1)
 
 	case "JNZ":
-		c.jump(op1, c.getZF() == 0)
+		c.jump(imm16, c.getZF() == 0)
 
 	case "JZ":
-		c.jump(op1, c.getZF() == 1)
+		c.jump(imm16, c.getZF() == 1)
 
 	case "JPO":
-		c.jump(op1, c.getPF() == 0)
+		c.jump(imm16, c.getPF() == 0)
 
 	case "JPE":
-		c.jump(op1, c.getPF() == 1)
+		c.jump(imm16, c.getPF() == 1)
 
 	case "JNC":
-		c.jump(op1, c.getCYF() == 0)
+		c.jump(imm16, c.getCYF() == 0)
 
 	case "JC":
-		c.jump(op1, c.getCYF() == 1)
+		c.jump(imm16, c.getCYF() == 1)
 
 	case "CALL":
-		c.call(op1, true)
+		c.call(imm16)
 
 	case "CNC":
-		c.call(op1, c.getCYF() == 0)
+		c.callCond(imm16, c.getCYF() == 0)
 
 	case "CC":
-		c.call(op1, c.getCYF() == 1)
+		c.callCond(imm16, c.getCYF() == 1)
 
 	case "CP":
-		c.call(op1, c.getSF() == 0)
+		c.callCond(imm16, c.getSF() == 0)
 
 	case "CM":
-		c.call(op1, c.getSF() == 1)
+		c.callCond(imm16, c.getSF() == 1)
 
 	case "CPO":
-		c.call(op1, c.getPF() == 0)
+		c.callCond(imm16, c.getPF() == 0)
 
 	case "CPE":
-		c.call(op1, c.getPF() == 1)
+		c.callCond(imm16, c.getPF() == 1)
 
 	case "CNZ":
-		c.call(op1, c.getZF() == 0)
+		c.callCond(imm16, c.getZF() == 0)
 
 	case "CZ":
-		c.call(op1, c.getZF() == 1)
+		c.callCond(imm16, c.getZF() == 1)
 
 	case "RET":
-		c.ret(true)
+		c.ret()
 
 	case "RP":
-		c.ret(c.getSF() == 0)
+		c.retCond(c.getSF() == 0)
 
 	case "RM":
-		c.ret(c.getSF() == 1)
+		c.retCond(c.getSF() == 1)
 
 	case "RNZ":
-		c.ret(c.getZF() == 0)
+		c.retCond(c.getZF() == 0)
 
 	case "RZ":
-		c.ret(c.getZF() == 1)
+		c.retCond(c.getZF() == 1)
 
 	case "RPE":
-		c.ret(c.getPF() == 1)
+		c.retCond(c.getPF() == 1)
 
 	case "RPO":
-		c.ret(c.getPF() == 0)
+		c.retCond(c.getPF() == 0)
 
 	case "RNC":
-		c.ret(c.getCYF() == 0)
+		c.retCond(c.getCYF() == 0)
 
 	case "RC":
-		c.ret(c.getCYF() == 1)
+		c.retCond(c.getCYF() == 1)
 
 	case "MVI":
-		value := uint8(lib.Must(strconv.ParseUint(op2, 16, 8)))
+		value := imm1
 		c.setOp(op1, value)
 
 	case "MOV":
@@ -198,31 +196,11 @@ func (c *CPU) Step() uint64 {
 	case "DCX":
 		c.setDoubleOp(op1, c.getDoubleOp(op1)-1)
 
-	case "DCR":
-		res := c.getOp(op1) - 1
-		c.setOp(op1, res)
-
-		c.setFlags(res&0x80 == 0x80, res == 0, res&0x0F != 0x0F, bits.OnesCount8(res)%2 == 0, c.getCYF() == 1)
-
 	case "DAD":
 		res := uint32(c.getHL()) + uint32(c.getDoubleOp(op1))
 
 		c.setCYF(res > math.MaxUint16)
 		c.setHL(uint16(res))
-
-	case "CMP", "CPI":
-		var value uint8
-
-		if inst == "CMP" {
-			value = c.getOp(op1)
-		} else {
-			value = uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
-		}
-
-		res := c.a - value
-
-		c.setFlags(res&0x80 == 0x80, res == 0, c.a&0x0F >= value&0x0F, bits.OnesCount8(res)%2 == 0, c.a < value)
-
 	case "CMA":
 		c.a = 0xFF - c.a
 
@@ -251,24 +229,18 @@ func (c *CPU) Step() uint64 {
 
 	case "PCHL":
 		c.pc = c.getHL()
-		c.sc += states
-
-		return states
 
 	case "IN":
-		value := uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+		value := imm1
 		c.a = c.portIn(value)
 
 	case "OUT":
-		value := uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+		value := imm1
 		c.portOut(value)
 
 	case "RST":
-		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+		addr := imm16
 		c.pc = addr
-		c.sc += states
-
-		return states
 
 	case "RRC":
 		sb := c.a & 0x1
@@ -290,13 +262,26 @@ func (c *CPU) Step() uint64 {
 		c.a = c.a<<1 | c.getCYF()
 		c.setCYF(sb == 1)
 
+	case "CMP", "CPI":
+		var value uint8
+
+		if inst == "CMP" {
+			value = c.getOp(op1)
+		} else {
+			value = imm1
+		}
+
+		res := c.a - value
+
+		c.setFlags(res&0x80 == 0x80, res == 0, c.a&0x0F >= value&0x0F, bits.OnesCount8(res)%2 == 0, c.a < value)
+
 	case "ADD", "ADC", "ADI", "ACI":
 		var value uint8
 
 		if inst == "ADD" || inst == "ADC" {
 			value = c.getOp(op1)
 		} else {
-			value = uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+			value = imm1
 		}
 
 		carry := uint8(0)
@@ -317,7 +302,7 @@ func (c *CPU) Step() uint64 {
 		if inst == "SUB" || inst == "SBB" {
 			value = c.getOp(op1)
 		} else {
-			value = uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+			value = imm1
 		}
 
 		carry := uint8(0)
@@ -338,7 +323,7 @@ func (c *CPU) Step() uint64 {
 		if inst == "XRA" {
 			value = c.getOp(op1)
 		} else {
-			value = uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+			value = imm1
 		}
 
 		res := c.a ^ value
@@ -353,7 +338,7 @@ func (c *CPU) Step() uint64 {
 		if inst == "ANA" {
 			value = c.getOp(op1)
 		} else {
-			value = uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+			value = imm1
 		}
 
 		res := c.a & value
@@ -368,7 +353,7 @@ func (c *CPU) Step() uint64 {
 		if inst == "ORA" {
 			value = c.getOp(op1)
 		} else {
-			value = uint8(lib.Must(strconv.ParseUint(op1, 16, 8)))
+			value = imm1
 		}
 
 		res := c.a | value
@@ -378,9 +363,16 @@ func (c *CPU) Step() uint64 {
 		c.a = res
 
 	case "INR":
-		res := c.getOp(op1) + 1
-		c.setFlags(res&0x80 == 0x80, res == 0, false, bits.OnesCount8(res)%2 == 0, c.getCYF() == 1)
+		value := c.getOp(op1)
+		res := value + 1
 		c.setOp(op1, res)
+		c.setFlags(res&0x80 == 0x80, res == 0, value&0x0F+1 > 0x0F, bits.OnesCount8(res)%2 == 0, c.getCYF() == 1)
+
+	case "DCR":
+		value := c.getOp(op1)
+		res := value - 1
+		c.setOp(op1, res)
+		c.setFlags(res&0x80 == 0x80, res == 0, value&0x0F >= 1, bits.OnesCount8(res)%2 == 0, c.getCYF() == 1)
 
 	case "DAA":
 		cy := c.getCYF() == 1
@@ -411,12 +403,12 @@ func (c *CPU) Step() uint64 {
 		c.WriteMem(c.getDoubleOp(op1), c.a)
 
 	case "SHLD":
-		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+		addr := imm16
 		c.WriteMem(addr, c.getL())
 		c.WriteMem(addr+1, c.getH())
 
 	case "LHLD":
-		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+		addr := imm16
 		c.setHL(uint16(c.ReadMem(addr+1))<<8 | uint16(c.ReadMem(addr)))
 
 	case "STC":
@@ -426,7 +418,7 @@ func (c *CPU) Step() uint64 {
 		log.Fatalf("unimplemented inst %s", inst)
 	}
 
-	c.sc += states
+	c.sc += uint64(states)
 
 	if prevSC >= c.sc {
 		log.Fatal("state counter not incremented")
@@ -452,25 +444,32 @@ func (c *CPU) pop() uint16 {
 	return value
 }
 
-func (c *CPU) jump(op1 string, cond bool) {
+func (c *CPU) jump(imm16 uint16, cond bool) {
 	if cond {
-		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
-		c.pc = addr
+		c.pc = imm16
 	}
 }
 
-func (c *CPU) call(op1 string, cond bool) {
-	if cond {
-		addr := uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
+func (c *CPU) call(imm16 uint16) {
+	c.push(c.pc + 3)
+	c.pc = imm16
+}
 
-		c.push(c.pc + 3)
-		c.pc = addr
+func (c *CPU) callCond(imm16 uint16, cond bool) {
+	if cond {
+		c.call(imm16)
+		c.sc += 6
 	}
 }
 
-func (c *CPU) ret(cond bool) {
+func (c *CPU) ret() {
+	c.pc = c.pop()
+}
+
+func (c *CPU) retCond(cond bool) {
 	if cond {
-		c.pc = c.pop()
+		c.ret()
+		c.sc += 6
 	}
 }
 

@@ -105,11 +105,11 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		// 		sc = 0
 		// 	}
 		// }
-		a.cpuSC += a.cpu.Step()
+		a.cpuSC += uint64(a.cpu.Step())
 
 		sc += a.cpuSC
 		if a.cpuSC > milestone {
-			fmt.Printf("States milestone reached: %d\n", milestone)
+			// fmt.Printf("States milestone reached: %d\n", milestone)
 			milestone += 1000000
 		}
 	}
@@ -140,7 +140,7 @@ func Disassemble(romPaths []string) error {
 	c.ReadMem = func(offset uint16) uint8 { return romBytes[i+offset] }
 
 	for i < uint16(len(romBytes)) {
-		inst, op1, op2, instLength, _ := c.DecodeInst()
+		inst, _, _, instLength, _ := c.DecodeInst()
 
 		var b strings.Builder
 
@@ -159,14 +159,6 @@ func Disassemble(romPaths []string) error {
 		}
 
 		b.WriteString(inst)
-
-		if op1 != "" {
-			b.WriteString(" " + op1)
-
-			if op2 != "" {
-				b.WriteString(", " + op2)
-			}
-		}
 
 		fmt.Println(b.String())
 
