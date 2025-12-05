@@ -1,5 +1,26 @@
 # space-invaders
 
+## Test results
+
+### TST8080.COM
+<!-- TST8080.COM -->
+<!-- /TST8080.COM -->
+
+### 8080PRE.COM
+
+<!-- 8080PRE.COM -->
+<!-- /8080PRE.COM -->
+
+### CPUTEST.COM
+
+<!-- CPUTEST.COM -->
+<!-- /CPUTEST.COM -->
+
+### 8080EXM.COM
+
+<!-- 8080EXM.COM -->
+<!-- /8080EXM.COM -->
+
 ## Profiling
 
 - Use the `-p` flag to start profiling webserver when running the emulator
