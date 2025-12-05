@@ -288,7 +288,7 @@ func (c *CPU) Step() uint8 {
 
 		res := c.a + value + carry
 
-		c.setFlags(res&0x80 == 0x80, res == 0, c.a&0x0F+(value+carry)&0x0F > 0x0F, bits.OnesCount8(res)%2 == 0, uint16(c.a)+uint16(value)+uint16(carry) > 0xFF)
+		c.setFlags(res&0x80 == 0x80, res == 0, c.a&0x0F+(value)&0x0F+carry > 0x0F, bits.OnesCount8(res)%2 == 0, uint16(c.a)+uint16(value)+uint16(carry) > 0xFF)
 
 		c.a = res
 
@@ -309,7 +309,7 @@ func (c *CPU) Step() uint8 {
 
 		res := c.a - value - carry
 
-		c.setFlags(res&0x80 == 0x80, res == 0, (c.a&0x0F) >= (value&0x0F+carry), bits.OnesCount8(res)%2 == 0, uint16(c.a) < uint16(value)+uint16(carry))
+		c.setFlags(res&0x80 == 0x80, res == 0, (c.a&0x0F) >= (value&0x0F)+carry, bits.OnesCount8(res)%2 == 0, uint16(c.a) < uint16(value)+uint16(carry))
 
 		c.a = res
 
