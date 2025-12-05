@@ -1,357 +1,362 @@
 package cpu
 
 import (
+	"fmt"
+	"math"
+	"math/bits"
 	"strconv"
+
+	"github.com/cterence/space-invaders/internal/arcade/lib"
 )
 
-var opcodeStates = [256]uint8{
-	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, // 0
-	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, // 1
-	4, 10, 16, 5, 5, 5, 7, 4, 4, 10, 16, 5, 5, 5, 7, 4, // 2
-	4, 10, 13, 5, 10, 10, 10, 4, 4, 10, 13, 5, 5, 5, 7, 4, // 3
-	5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5, // 4
-	5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5, // 5
-	5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5, // 6
-	7, 7, 7, 7, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 7, 5, // 7
-	4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, // 8
-	4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, // 9
-	4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, // A
-	4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, // B
-	5, 10, 10, 10, 11, 11, 7, 11, 5, 10, 10, 10, 11, 17, 7, 11, // C
-	5, 10, 10, 10, 11, 11, 7, 11, 5, 10, 10, 10, 11, 17, 7, 11, // D
-	5, 10, 10, 18, 11, 11, 7, 11, 5, 5, 10, 4, 11, 17, 7, 11, // E
-	5, 10, 10, 4, 11, 11, 7, 11, 5, 5, 10, 4, 11, 17, 7, 11, // F
+func nop(*CPU, string, string) {}
+
+func ldax(c *CPU, op1, op2 string) {
+	c.a = c.ReadMem(c.getDoubleOp(op1))
 }
 
-func (c *CPU) DecodeInst() (string, uint16, string, string, uint8, uint8, uint8) {
-	operandOrder := []string{"B", "C", "D", "E", "H", "L", "M", "A"}
-	doubleOperandOrderAF := []string{"BC", "DE", "HL", "AF"}
-	doubleOperandOrderSP := []string{"BC", "DE", "HL", "SP"}
-	opcode := c.ReadMem(c.pc)
-
-	var (
-		inst   string
-		length uint16
-		op1    string
-		op2    string
-		imm1   uint8
-		imm2   uint8
-	)
-
-	switch opcode {
-	default:
-		length = 1
-
-		switch opcode {
-		case 0x00, 0x10, 0x20, 0x30, 0x08, 0x18, 0x28, 0x38:
-			inst = "NOP"
-
-		case 0x02, 0x12:
-			inst = "STAX"
-			op1 = doubleOperandOrderAF[(opcode-0x2)/0x10]
-
-		case 0x03, 0x13, 0x23, 0x33:
-			inst = "INX"
-			op1 = doubleOperandOrderSP[(opcode-0x3)/0x10]
-
-		case 0x04, 0x14, 0x24, 0x34, 0x0C, 0x1C, 0x2C, 0x3C:
-			inst = "INR"
-			op1 = operandOrder[(opcode-0x4)/0x8]
-
-		case 0x05, 0x15, 0x25, 0x35, 0x0D, 0x1D, 0x2D, 0x3D:
-			inst = "DCR"
-			op1 = operandOrder[(opcode-0x4)/0x8]
-
-		case 0x07:
-			inst = "RLC"
-
-		case 0x17:
-			inst = "RAL"
-
-		case 0x27:
-			inst = "DAA"
-
-		case 0x37:
-			inst = "STC"
-
-		case 0x09, 0x19, 0x29, 0x39:
-			inst = "DAD"
-			op1 = doubleOperandOrderSP[(opcode-0x9)/0x10]
-
-		case 0x0A, 0x1A:
-			inst = "LDAX"
-			op1 = doubleOperandOrderAF[(opcode-0xA)/0x10]
-
-		case 0x0B, 0x1B, 0x2B, 0x3B:
-			inst = "DCX"
-			op1 = doubleOperandOrderSP[(opcode-0xB)/0x10]
-
-		case 0x0F:
-			inst = "RRC"
-
-		case 0x1F:
-			inst = "RAR"
-
-		case 0x2F:
-			inst = "CMA"
-
-		case 0x3F:
-			inst = "CMC"
-
-		case 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F, 0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x77, 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7E, 0x7F:
-			inst = "MOV"
-			op1 = operandOrder[(opcode-0x40)/8]
-			op2 = operandOrder[opcode%8]
-
-		case 0x76:
-			inst = "HALT"
-
-		case 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87:
-			inst = "ADD"
-			op1 = operandOrder[opcode-0x80]
-
-		case 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F:
-			inst = "ADC"
-			op1 = operandOrder[opcode-0x88]
-
-		case 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97:
-			inst = "SUB"
-			op1 = operandOrder[opcode-0x90]
-
-		case 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F:
-			inst = "SBB"
-			op1 = operandOrder[opcode-0x98]
-
-		case 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7:
-			inst = "ANA"
-			op1 = operandOrder[opcode-0xA0]
-
-		case 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF:
-			inst = "XRA"
-			op1 = operandOrder[opcode-0xA8]
-
-		case 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7:
-			inst = "ORA"
-			op1 = operandOrder[opcode-0xB0]
-
-		case 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF:
-			inst = "CMP"
-			op1 = operandOrder[opcode-0xB8]
-
-		case 0xC0:
-			inst = "RNZ"
-
-		case 0xD0:
-			inst = "RNC"
-
-		case 0xE0:
-			inst = "RPO"
-
-		case 0xF0:
-			inst = "RP"
-
-		case 0xC1, 0xD1, 0xE1, 0xF1:
-			inst = "POP"
-			op1 = doubleOperandOrderAF[(opcode-0xC1)/0x10]
-
-		case 0xE3:
-			inst = "XTHL"
-
-		case 0xF3:
-			inst = "DI"
-
-		case 0xC5, 0xD5, 0xE5, 0xF5:
-			inst = "PUSH"
-			op1 = doubleOperandOrderAF[(opcode-0xC5)/0x10]
-
-		case 0xC7, 0xD7, 0xE7, 0xF7, 0xCF, 0xDF, 0xEF, 0xFF:
-			inst = "RST"
-			op1 = strconv.FormatUint(uint64(opcode-0xC7), 16)
-
-		case 0xC8:
-			inst = "RZ"
-
-		case 0xD8:
-			inst = "RC"
-
-		case 0xE8:
-			inst = "RPE"
-
-		case 0xF8:
-			inst = "RM"
-
-		case 0xC9, 0xD9:
-			inst = "RET"
-
-		case 0xE9:
-			inst = "PCHL"
-
-		case 0xF9:
-			inst = "SPHL"
-
-		case 0xEB:
-			inst = "XCHG"
-
-		case 0xFB:
-			inst = "EI"
-
-		default:
-			panic("undecoded opcode: " + strconv.FormatUint(uint64(opcode), 16))
-		}
-	case 0xD3, 0x06, 0x16, 0x26, 0x36, 0xC6, 0xD6, 0xE6, 0xF6, 0xDB, 0x0E, 0x1E, 0x2E, 0x3E, 0xCE, 0xDE, 0xEE, 0xFE:
-		length = 2
-
-		switch opcode {
-		case 0xD3:
-			inst = "OUT"
-			imm1 = c.ReadMem(c.pc + 1)
-
-		case 0x06, 0x16, 0x26, 0x36, 0x0E, 0x1E, 0x2E, 0x3E:
-			inst = "MVI"
-			imm1 = c.ReadMem(c.pc + 1)
-			op1 = operandOrder[(opcode-0x06)/8]
-
-		case 0xC6:
-			inst = "ADI"
-			imm1 = c.ReadMem(c.pc + 1)
-
-		case 0xD6:
-			inst = "SUI"
-			imm1 = c.ReadMem(c.pc + 1)
-
-		case 0xE6:
-			inst = "ANI"
-			imm1 = c.ReadMem(c.pc + 1)
-
-		case 0xF6:
-			inst = "ORI"
-			imm1 = c.ReadMem(c.pc + 1)
-
-		case 0xDB:
-			inst = "IN"
-			imm1 = c.ReadMem(c.pc + 1)
-
-		case 0xCE:
-			inst = "ACI"
-			imm1 = c.ReadMem(c.pc + 1)
-
-		case 0xDE:
-			inst = "SBI"
-			imm1 = c.ReadMem(c.pc + 1)
-
-		case 0xEE:
-			inst = "XRI"
-			imm1 = c.ReadMem(c.pc + 1)
-
-		case 0xFE:
-			inst = "CPI"
-			imm1 = c.ReadMem(c.pc + 1)
-
-		default:
-			panic("undecoded opcode: " + strconv.FormatUint(uint64(opcode), 16))
-		}
-
-	case 0x01, 0x11, 0x21, 0x31, 0x22, 0x32, 0xC2, 0xD2, 0xE2, 0xF2, 0xC3, 0xC4, 0xD4, 0xE4, 0xF4, 0x2A, 0x3A, 0xCA, 0xDA, 0xEA, 0xFA, 0xCB, 0xCC, 0xDC, 0xEC, 0xFC, 0xCD, 0xDD, 0xED, 0xFD:
-		length = 3
-
-		switch opcode {
-		case 0x01, 0x11, 0x21, 0x31:
-			inst = "LXI"
-			op1 = doubleOperandOrderSP[opcode>>4]
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0x22:
-			inst = "SHLD"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0x32:
-			inst = "STA"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xC2:
-			inst = "JNZ"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xD2:
-			inst = "JNC"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xE2:
-			inst = "JPO"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xF2:
-			inst = "JP"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xC3, 0xCB:
-			inst = "JMP"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xC4:
-			inst = "CNZ"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xD4:
-			inst = "CNC"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xE4:
-			inst = "CPO"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xF4:
-			inst = "CP"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0x2A:
-			inst = "LHLD"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0x3A:
-			inst = "LDA"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xCA:
-			inst = "JZ"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xDA:
-			inst = "JC"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xEA:
-			inst = "JPE"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xFA:
-			inst = "JM"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xCC:
-			inst = "CZ"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xDC:
-			inst = "CC"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xEC:
-			inst = "CPE"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xFC:
-			inst = "CM"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		case 0xCD, 0xDD, 0xED, 0xFD:
-			inst = "CALL"
-			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
-
-		default:
-			panic("undecoded opcode: " + strconv.FormatUint(uint64(opcode), 16))
-		}
+func stax(c *CPU, op1, op2 string) {
+	c.WriteMem(c.getDoubleOp(op1), c.a)
+}
+
+func inx(c *CPU, op1, op2 string) {
+	c.setDoubleOp(op1, c.getDoubleOp(op1)+1)
+}
+
+func dcx(c *CPU, op1, op2 string) {
+	c.setDoubleOp(op1, c.getDoubleOp(op1)-1)
+}
+
+func inr(c *CPU, op1, op2 string) {
+	value := c.getOp(op1)
+	res := value + 1
+	c.setOp(op1, res)
+	c.setFlags(res&0x80 == 0x80, res == 0, value&0x0F+1 > 0x0F, bits.OnesCount8(res)%2 == 0, c.getCYF() == 1)
+}
+
+func dcr(c *CPU, op1, op2 string) {
+	value := c.getOp(op1)
+	res := value - 1
+	c.setOp(op1, res)
+	c.setFlags(res&0x80 == 0x80, res == 0, value&0x0F >= 1, bits.OnesCount8(res)%2 == 0, c.getCYF() == 1)
+}
+
+func dad(c *CPU, op1, op2 string) {
+	res := uint32(c.getHL()) + uint32(c.getDoubleOp(op1))
+
+	c.setCYF(res > math.MaxUint16)
+	c.setHL(uint16(res))
+}
+
+func lxi(c *CPU, op1, op2 string) {
+	imm1, imm2 := c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
+	imm16 := uint16(imm2)<<8 | uint16(imm1)
+	c.setDoubleOp(op1, imm16)
+}
+
+func (c *CPU) pop() uint16 {
+	value := uint16(c.ReadMem(c.sp+1))<<8 | uint16(c.ReadMem(c.sp))
+	c.sp += 2
+
+	return value
+}
+
+func popOp(c *CPU, op1, op2 string) {
+	value := c.pop()
+	c.setDoubleOp(op1, value)
+}
+
+func (c *CPU) push(addr uint16) {
+	c.sp -= 2
+	c.WriteMem(c.sp, uint8(addr))
+	c.WriteMem(c.sp+1, uint8(addr>>8))
+}
+
+func pushOp(c *CPU, op1, op2 string) {
+	c.sp -= 2
+	value := c.getDoubleOp(op1)
+	c.WriteMem(c.sp, uint8(value))
+	c.WriteMem(c.sp+1, uint8(value>>8))
+}
+
+func (c *CPU) jumpCond(cond bool) {
+	imm1, imm2 := c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
+	imm16 := uint16(imm2)<<8 | uint16(imm1)
+
+	if cond {
+		c.pc = imm16
+	}
+}
+
+func (c *CPU) call() {
+	imm1, imm2 := c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
+	addr := uint16(imm2)<<8 | uint16(imm1)
+
+	c.push(c.pc + 3)
+	c.pc = addr
+}
+
+func (c *CPU) callCond(cond bool) {
+	if cond {
+		c.call()
+		c.sc += 6
+	}
+}
+
+func (c *CPU) ret() {
+	c.pc = c.pop()
+}
+
+func (c *CPU) retCond(cond bool) {
+	if cond {
+		c.ret()
+		c.sc += 6
+	}
+}
+
+func mvi(c *CPU, op1, op2 string) {
+	imm1 := c.ReadMem(c.pc + 1)
+	c.setOp(op1, imm1)
+}
+
+func rlc(c *CPU, op1, op2 string) {
+	sb := c.a & 0x80 >> 7
+	c.setCYF(sb == 1)
+	c.a = c.a<<1 | sb
+}
+func rrc(c *CPU, op1, op2 string) {
+	sb := c.a & 0x1
+	c.setCYF(sb == 1)
+	c.a = c.a>>1 | sb<<7
+}
+
+func ral(c *CPU, op1, op2 string) {
+	sb := c.a & 0x80 >> 7
+	c.a = c.a<<1 | c.getCYF()
+	c.setCYF(sb == 1)
+}
+
+func rar(c *CPU, op1, op2 string) {
+	sb := c.a & 0x1
+	c.a = c.a>>1 | c.getCYF()<<7
+	c.setCYF(sb == 1)
+}
+
+func shld(c *CPU, op1, op2 string) {
+	imm1, imm2 := c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
+	imm16 := uint16(imm2)<<8 | uint16(imm1)
+	c.WriteMem(imm16, c.getL())
+	c.WriteMem(imm16+1, c.getH())
+}
+
+func daa(c *CPU, op1, op2 string) {
+	cy := c.getCYF() == 1
+	value := uint8(0)
+
+	if c.a&0x0F > 0x09 || c.getACF() == 1 {
+		value += 0x06
 	}
 
-	return inst, length, op1, op2, imm1, imm2, opcodeStates[opcode]
+	if (c.a+value)&0xF0 > 0x90 || cy || c.a > 0x99 {
+		value += 0x60
+		cy = true
+	}
+
+	res := c.a + value
+
+	c.setFlags(res&0x80 == 0x80, res == 0, c.a&0x0F+value&0x0F > 0x0F, bits.OnesCount8(res)%2 == 0, cy)
+
+	c.a = res
+}
+
+func lhld(c *CPU, op1, op2 string) {
+	imm1, imm2 := c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
+	imm16 := uint16(imm2)<<8 | uint16(imm1)
+	c.setHL(uint16(c.ReadMem(imm16+1))<<8 | uint16(c.ReadMem(imm16)))
+}
+
+func sta(c *CPU, op1, op2 string) {
+	imm1, imm2 := c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
+	imm16 := uint16(imm2)<<8 | uint16(imm1)
+	c.WriteMem(imm16, c.a)
+}
+
+func lda(c *CPU, op1, op2 string) {
+	imm1, imm2 := c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
+	imm16 := uint16(imm2)<<8 | uint16(imm1)
+	c.a = c.ReadMem(imm16)
+}
+
+func add(c *CPU, op1, op2 string) {
+	value := c.getOp(op1)
+	res := c.a + value
+	c.setFlags(res&0x80 == 0x80, res == 0, c.a&0x0F+(value)&0x0F > 0x0F, bits.OnesCount8(res)%2 == 0, uint16(c.a)+uint16(value) > 0xFF)
+	c.a = res
+}
+
+func adc(c *CPU, op1, op2 string) {
+	value := c.getOp(op1)
+	carry := c.getCYF()
+	res := c.a + value + carry
+	c.setFlags(res&0x80 == 0x80, res == 0, c.a&0x0F+(value)&0x0F+carry > 0x0F, bits.OnesCount8(res)%2 == 0, uint16(c.a)+uint16(value)+uint16(carry) > 0xFF)
+	c.a = res
+}
+
+func sub(c *CPU, op1, op2 string) {
+	value := c.getOp(op1)
+	res := c.a - value
+	c.setFlags(res&0x80 == 0x80, res == 0, (c.a&0x0F) >= (value&0x0F), bits.OnesCount8(res)%2 == 0, uint16(c.a) < uint16(value))
+	c.a = res
+}
+
+func sbb(c *CPU, op1, op2 string) {
+	value := c.getOp(op1)
+	carry := c.getCYF()
+	res := c.a - value - carry
+	c.setFlags(res&0x80 == 0x80, res == 0, (c.a&0x0F) >= (value&0x0F)+carry, bits.OnesCount8(res)%2 == 0, uint16(c.a) < uint16(value)+uint16(carry))
+	c.a = res
+}
+
+func ana(c *CPU, op1, op2 string) {
+	value := c.getOp(op1)
+	res := c.a & value
+	c.setFlags(res&0x80 == 0x80, res == 0, (c.a|value)&0x08 != 0, bits.OnesCount8(res)%2 == 0, false)
+	c.a = res
+}
+
+func xra(c *CPU, op1, op2 string) {
+	value := c.getOp(op1)
+	res := c.a ^ value
+	c.setFlags(res&0x80 == 0x80, res == 0, false, bits.OnesCount8(res)%2 == 0, false)
+	c.a = res
+}
+
+func ora(c *CPU, op1, op2 string) {
+	value := c.getOp(op1)
+	res := c.a | value
+	c.setFlags(res&0x80 == 0x80, res == 0, false, bits.OnesCount8(res)%2 == 0, false)
+	c.a = res
+}
+
+func cmp(c *CPU, op1, op2 string) {
+	value := c.getOp(op1)
+	res := c.a - value
+	c.setFlags(res&0x80 == 0x80, res == 0, c.a&0x0F >= value&0x0F, bits.OnesCount8(res)%2 == 0, c.a < value)
+}
+
+func hlt(c *CPU, op1, op2 string) {
+	// TODO: implement
+}
+
+func xthl(c *CPU, op1, op2 string) {
+	lo := c.ReadMem(c.sp)
+	hi := c.ReadMem(c.sp + 1)
+	c.WriteMem(c.sp, c.l)
+	c.WriteMem(c.sp+1, c.h)
+	c.l = lo
+	c.h = hi
+}
+
+func cpi(c *CPU, op1, op2 string) {
+	imm1 := c.ReadMem(c.pc + 1)
+	value := imm1
+	res := c.a - value
+
+	c.setFlags(res&0x80 == 0x80, res == 0, c.a&0x0F >= value&0x0F, bits.OnesCount8(res)%2 == 0, c.a < value)
+}
+
+func rst(c *CPU, op1, op2 string) {
+	c.pc = uint16(lib.Must(strconv.ParseUint(op1, 16, 16)) * 8)
+}
+
+func adi(c *CPU, op1, op2 string) {
+	imm1 := c.ReadMem(c.pc + 1)
+	value := imm1
+	res := c.a + value
+	c.setFlags(res&0x80 == 0x80, res == 0, c.a&0x0F+(value)&0x0F > 0x0F, bits.OnesCount8(res)%2 == 0, uint16(c.a)+uint16(value) > 0xFF)
+	c.a = res
+}
+
+func aci(c *CPU, op1, op2 string) {
+	imm1 := c.ReadMem(c.pc + 1)
+	value := imm1
+	carry := c.getCYF()
+	res := c.a + value + carry
+	c.setFlags(res&0x80 == 0x80, res == 0, c.a&0x0F+(value)&0x0F+carry > 0x0F, bits.OnesCount8(res)%2 == 0, uint16(c.a)+uint16(value)+uint16(carry) > 0xFF)
+	c.a = res
+}
+
+func sui(c *CPU, op1, op2 string) {
+	imm1 := c.ReadMem(c.pc + 1)
+	value := imm1
+	res := c.a - value
+	c.setFlags(res&0x80 == 0x80, res == 0, (c.a&0x0F) >= (value&0x0F), bits.OnesCount8(res)%2 == 0, uint16(c.a) < uint16(value))
+	c.a = res
+}
+
+func sbi(c *CPU, op1, op2 string) {
+	imm1 := c.ReadMem(c.pc + 1)
+	value := imm1
+	carry := c.getCYF()
+	res := c.a - value - carry
+	c.setFlags(res&0x80 == 0x80, res == 0, (c.a&0x0F) >= (value&0x0F)+carry, bits.OnesCount8(res)%2 == 0, uint16(c.a) < uint16(value)+uint16(carry))
+	c.a = res
+}
+
+func ani(c *CPU, op1, op2 string) {
+	imm1 := c.ReadMem(c.pc + 1)
+	value := imm1
+	res := c.a & value
+
+	c.setFlags(res&0x80 == 0x80, res == 0, (c.a|value)&0x08 != 0, bits.OnesCount8(res)%2 == 0, false)
+	c.a = res
+}
+
+func xri(c *CPU, op1, op2 string) {
+	imm1 := c.ReadMem(c.pc + 1)
+	value := imm1
+	res := c.a ^ value
+	c.setFlags(res&0x80 == 0x80, res == 0, false, bits.OnesCount8(res)%2 == 0, false)
+	c.a = res
+}
+
+func ori(c *CPU, op1, op2 string) {
+	imm1 := c.ReadMem(c.pc + 1)
+	value := imm1
+	res := c.a | value
+	c.setFlags(res&0x80 == 0x80, res == 0, false, bits.OnesCount8(res)%2 == 0, false)
+	c.a = res
+}
+
+func portIn(c *CPU, op1, op2 string) {}
+
+func portOut(c *CPU, op1, op2 string) {
+	portNumber := c.ReadMem(c.pc + 1)
+
+	switch portNumber {
+	case 0:
+		c.Running = false
+
+		fmt.Println()
+	case 1:
+		switch c.c {
+		case 2:
+			fmt.Print(string(c.e))
+		case 9:
+			addr := c.getDE()
+			for offset := uint16(0); ; offset++ {
+				b := c.ReadMem(addr + offset)
+				if b == '$' {
+					break
+				}
+
+				fmt.Print(string(b))
+			}
+
+		default:
+			fmt.Printf("unimplemented out operation for port 1: %02x", c.c)
+		}
+	default:
+		fmt.Printf("unimplemented out port: %02x", portNumber)
+	}
 }

@@ -86,7 +86,6 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 
 	// lastCPUPeriod := time.Now()
 	// loggedThrottled := false
-	milestone := uint64(1000000)
 	sc := uint64(0)
 
 	for a.cpu.Running && (a.stop == 0 || a.cpuSC < a.stop) {
@@ -108,10 +107,6 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		a.cpuSC += uint64(a.cpu.Step())
 
 		sc += a.cpuSC
-		if a.cpuSC > milestone {
-			// fmt.Printf("States milestone reached: %d\n", milestone)
-			milestone += 1000000
-		}
 	}
 
 	return nil
@@ -140,29 +135,29 @@ func Disassemble(romPaths []string) error {
 	c.ReadMem = func(offset uint16) uint8 { return romBytes[i+offset] }
 
 	for i < uint16(len(romBytes)) {
-		inst, instLength, _, _, _, _, _ := c.DecodeInst()
+		inst := c.DecodeInst()
 
 		var b strings.Builder
 
 		b.WriteString(fmt.Sprintf("%04x: ", i))
 
-		if instLength == 1 {
+		if inst.Length == 1 {
 			b.WriteString(fmt.Sprintf("%02x          ", romBytes[i]))
 		}
 
-		if instLength == 2 {
+		if inst.Length == 2 {
 			b.WriteString(fmt.Sprintf("%02x %02x       ", romBytes[i], romBytes[i+1]))
 		}
 
-		if instLength == 3 {
+		if inst.Length == 3 {
 			b.WriteString(fmt.Sprintf("%02x %02x %02x    ", romBytes[i], romBytes[i+1], romBytes[i+2]))
 		}
 
-		b.WriteString(inst)
+		b.WriteString(inst.Name + " " + inst.Op1 + " " + inst.Op2)
 
 		fmt.Println(b.String())
 
-		i += instLength
+		i += uint16(inst.Length)
 	}
 
 	return nil
