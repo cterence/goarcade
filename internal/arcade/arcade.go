@@ -135,7 +135,7 @@ func Disassemble(romPaths []string) error {
 	c.ReadMem = func(offset uint16) uint8 { return romBytes[i+offset] }
 
 	for i < uint16(len(romBytes)) {
-		inst := c.DecodeInst()
+		inst := cpu.InstByOpcode[romBytes[i]]
 
 		var b strings.Builder
 

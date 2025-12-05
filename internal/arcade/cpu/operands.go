@@ -1,135 +1,6 @@
 package cpu
 
-// Simple operands
-
-func (c *CPU) getA() uint8 {
-	return c.a
-}
-
-func (c *CPU) getF() uint8 {
-	return c.f
-}
-
-func (c *CPU) getB() uint8 {
-	return c.b
-}
-
-func (c *CPU) getC() uint8 {
-	return c.c
-}
-
-func (c *CPU) getD() uint8 {
-	return c.d
-}
-
-func (c *CPU) getE() uint8 {
-	return c.e
-}
-
-func (c *CPU) getH() uint8 {
-	return c.h
-}
-
-func (c *CPU) getL() uint8 {
-	return c.l
-}
-
-func (c *CPU) getM() uint8 {
-	return c.ReadMem(c.getHL())
-}
-
-// Set
-
-func (c *CPU) setA(v uint8) {
-	c.a = v
-}
-
-func (c *CPU) setF(v uint8) {
-	c.f = v&0xD7 | 0x02
-}
-
-func (c *CPU) setB(v uint8) {
-	c.b = v
-}
-
-func (c *CPU) setC(v uint8) {
-	c.c = v
-}
-
-func (c *CPU) setD(v uint8) {
-	c.d = v
-}
-
-func (c *CPU) setE(v uint8) {
-	c.e = v
-}
-
-func (c *CPU) setH(v uint8) {
-	c.h = v
-}
-
-func (c *CPU) setL(v uint8) {
-	c.l = v
-}
-
-func (c *CPU) setM(v uint8) {
-	c.WriteMem(c.getHL(), v)
-}
-
-// Double registers
-
-// Get
-
-func (c *CPU) getAF() uint16 {
-	return uint16(c.a)<<8 | uint16(c.f)
-}
-
-func (c *CPU) getBC() uint16 {
-	return uint16(c.b)<<8 | uint16(c.c)
-}
-
-func (c *CPU) getDE() uint16 {
-	return uint16(c.d)<<8 | uint16(c.e)
-}
-
-func (c *CPU) getHL() uint16 {
-	return uint16(c.h)<<8 | uint16(c.l)
-}
-
-func (c *CPU) getSP() uint16 {
-	return c.sp
-}
-
-// Set
-
-func (c *CPU) setAF(v uint16) {
-	c.setA(uint8(v >> 8))
-	c.setF(uint8(v))
-}
-
-func (c *CPU) setBC(v uint16) {
-	c.setB(uint8(v >> 8))
-	c.setC(uint8(v))
-}
-
-func (c *CPU) setDE(v uint16) {
-	c.setD(uint8(v >> 8))
-	c.setE(uint8(v))
-}
-
-func (c *CPU) setHL(v uint16) {
-	c.setH(uint8(v >> 8))
-	c.setL(uint8(v))
-}
-
-func (c *CPU) setSP(v uint16) {
-	c.sp = v
-}
-
-// Flags
-
-// Get
-
+// Flag getters.
 func (c *CPU) getSF() uint8 {
 	return c.f >> 7 & 1
 }
@@ -150,8 +21,7 @@ func (c *CPU) getCYF() uint8 {
 	return c.f & 1
 }
 
-// Set
-
+// Flag setters.
 func (c *CPU) setSF(b bool) {
 	if b {
 		c.f = c.f | 0x80
@@ -195,23 +65,23 @@ func (c *CPU) setCYF(b bool) {
 func (c *CPU) getOp(op string) uint8 {
 	switch op {
 	case "A":
-		return c.getA()
+		return c.a
 	case "F":
-		return c.getF()
+		return c.f
 	case "B":
-		return c.getB()
+		return c.b
 	case "C":
-		return c.getC()
+		return c.c
 	case "D":
-		return c.getD()
+		return c.d
 	case "E":
-		return c.getE()
+		return c.e
 	case "H":
-		return c.getH()
+		return c.h
 	case "L":
-		return c.getL()
+		return c.l
 	case "M":
-		return c.getM()
+		return c.ReadMem(uint16(c.h)<<8 | uint16(c.l))
 	default:
 		panic("unsupported operand: " + op)
 	}
@@ -220,23 +90,23 @@ func (c *CPU) getOp(op string) uint8 {
 func (c *CPU) setOp(op string, v uint8) {
 	switch op {
 	case "A":
-		c.setA(v)
+		c.a = v
 	case "F":
-		c.setF(v)
+		c.f = v
 	case "B":
-		c.setB(v)
+		c.b = v
 	case "C":
-		c.setC(v)
+		c.c = v
 	case "D":
-		c.setD(v)
+		c.d = v
 	case "E":
-		c.setE(v)
+		c.e = v
 	case "H":
-		c.setH(v)
+		c.h = v
 	case "L":
-		c.setL(v)
+		c.l = v
 	case "M":
-		c.setM(v)
+		c.WriteMem(uint16(c.h)<<8|uint16(c.l), v)
 	default:
 		panic("unsupported operand: " + op)
 	}
@@ -245,15 +115,15 @@ func (c *CPU) setOp(op string, v uint8) {
 func (c *CPU) getDoubleOp(op string) uint16 {
 	switch op {
 	case "AF":
-		return c.getAF()
+		return uint16(c.a)<<8 | uint16(c.f)
 	case "BC":
-		return c.getBC()
+		return uint16(c.b)<<8 | uint16(c.c)
 	case "DE":
-		return c.getDE()
+		return uint16(c.d)<<8 | uint16(c.e)
 	case "HL":
-		return c.getHL()
+		return uint16(c.h)<<8 | uint16(c.l)
 	case "SP":
-		return c.getSP()
+		return c.sp
 	default:
 		panic("unsupported operand: " + op)
 	}
@@ -262,15 +132,19 @@ func (c *CPU) getDoubleOp(op string) uint16 {
 func (c *CPU) setDoubleOp(op string, v uint16) {
 	switch op {
 	case "AF":
-		c.setAF(v)
+		c.a = uint8(v >> 8)
+		c.f = uint8(v)&0xD7 | 0x02
 	case "BC":
-		c.setBC(v)
+		c.b = uint8(v >> 8)
+		c.c = uint8(v)
 	case "DE":
-		c.setDE(v)
+		c.d = uint8(v >> 8)
+		c.e = uint8(v)
 	case "HL":
-		c.setHL(v)
+		c.h = uint8(v >> 8)
+		c.l = uint8(v)
 	case "SP":
-		c.setSP(v)
+		c.sp = v
 	default:
 		panic("unsupported operand: " + op)
 	}
