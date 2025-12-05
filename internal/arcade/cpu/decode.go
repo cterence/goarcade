@@ -4,7 +4,7 @@ import (
 	"strconv"
 )
 
-var opcodeCycles = [256]uint8{
+var opcodeStates = [256]uint8{
 	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, // 0
 	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, // 1
 	4, 10, 16, 5, 5, 5, 7, 4, 4, 10, 16, 5, 5, 5, 7, 4, // 2
@@ -23,7 +23,7 @@ var opcodeCycles = [256]uint8{
 	5, 10, 10, 4, 11, 11, 7, 11, 5, 5, 10, 4, 11, 17, 7, 11, // F
 }
 
-func (c *CPU) DecodeInst() (string, string, string, uint16, uint8) {
+func (c *CPU) DecodeInst() (string, uint16, string, string, uint8, uint8, uint8) {
 	operandOrder := []string{"B", "C", "D", "E", "H", "L", "M", "A"}
 	doubleOperandOrderAF := []string{"BC", "DE", "HL", "AF"}
 	doubleOperandOrderSP := []string{"BC", "DE", "HL", "SP"}
@@ -34,6 +34,8 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint8) {
 		length uint16
 		op1    string
 		op2    string
+		imm1   uint8
+		imm2   uint8
 	)
 
 	switch opcode {
@@ -202,37 +204,48 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint8) {
 		switch opcode {
 		case 0xD3:
 			inst = "OUT"
+			imm1 = c.ReadMem(c.pc + 1)
 
 		case 0x06, 0x16, 0x26, 0x36, 0x0E, 0x1E, 0x2E, 0x3E:
 			inst = "MVI"
+			imm1 = c.ReadMem(c.pc + 1)
 			op1 = operandOrder[(opcode-0x06)/8]
 
 		case 0xC6:
 			inst = "ADI"
+			imm1 = c.ReadMem(c.pc + 1)
 
 		case 0xD6:
 			inst = "SUI"
+			imm1 = c.ReadMem(c.pc + 1)
 
 		case 0xE6:
 			inst = "ANI"
+			imm1 = c.ReadMem(c.pc + 1)
 
 		case 0xF6:
 			inst = "ORI"
+			imm1 = c.ReadMem(c.pc + 1)
 
 		case 0xDB:
 			inst = "IN"
+			imm1 = c.ReadMem(c.pc + 1)
 
 		case 0xCE:
 			inst = "ACI"
+			imm1 = c.ReadMem(c.pc + 1)
 
 		case 0xDE:
 			inst = "SBI"
+			imm1 = c.ReadMem(c.pc + 1)
 
 		case 0xEE:
 			inst = "XRI"
+			imm1 = c.ReadMem(c.pc + 1)
 
 		case 0xFE:
 			inst = "CPI"
+			imm1 = c.ReadMem(c.pc + 1)
 
 		default:
 			panic("undecoded opcode: " + strconv.FormatUint(uint64(opcode), 16))
@@ -245,77 +258,100 @@ func (c *CPU) DecodeInst() (string, string, string, uint16, uint8) {
 		case 0x01, 0x11, 0x21, 0x31:
 			inst = "LXI"
 			op1 = doubleOperandOrderSP[opcode>>4]
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0x22:
 			inst = "SHLD"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0x32:
 			inst = "STA"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xC2:
 			inst = "JNZ"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xD2:
 			inst = "JNC"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xE2:
 			inst = "JPO"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xF2:
 			inst = "JP"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xC3, 0xCB:
 			inst = "JMP"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xC4:
 			inst = "CNZ"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xD4:
 			inst = "CNC"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xE4:
 			inst = "CPO"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xF4:
 			inst = "CP"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0x2A:
 			inst = "LHLD"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0x3A:
 			inst = "LDA"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xCA:
 			inst = "JZ"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xDA:
 			inst = "JC"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xEA:
 			inst = "JPE"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xFA:
 			inst = "JM"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xCC:
 			inst = "CZ"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xDC:
 			inst = "CC"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xEC:
 			inst = "CPE"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xFC:
 			inst = "CM"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		case 0xCD, 0xDD, 0xED, 0xFD:
 			inst = "CALL"
+			imm1, imm2 = c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
 
 		default:
 			panic("undecoded opcode: " + strconv.FormatUint(uint64(opcode), 16))
 		}
 	}
 
-	return inst, op1, op2, length, opcodeCycles[opcode]
+	return inst, length, op1, op2, imm1, imm2, opcodeStates[opcode]
 }

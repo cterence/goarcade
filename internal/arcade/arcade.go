@@ -140,7 +140,7 @@ func Disassemble(romPaths []string) error {
 	c.ReadMem = func(offset uint16) uint8 { return romBytes[i+offset] }
 
 	for i < uint16(len(romBytes)) {
-		inst, _, _, instLength, _ := c.DecodeInst()
+		inst, instLength, _, _, _, _, _ := c.DecodeInst()
 
 		var b strings.Builder
 

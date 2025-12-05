@@ -7,6 +7,8 @@ import (
 	"math/bits"
 	"strconv"
 	"strings"
+
+	"github.com/cterence/space-invaders/internal/arcade/lib"
 )
 
 type CPU struct {
@@ -76,11 +78,9 @@ func (c *CPU) String() string {
 
 func (c *CPU) Step() uint8 {
 	// Fetch instruction
-	inst, op1, op2, instLength, states := c.DecodeInst()
-	prevSC, prevPC := c.sc, c.pc
-
-	imm1, imm2 := c.ReadMem(c.pc+1), c.ReadMem(c.pc+2)
+	inst, instLength, op1, op2, imm1, imm2, states := c.DecodeInst()
 	imm16 := uint16(imm2)<<8 | uint16(imm1)
+	prevSC, prevPC := c.sc, c.pc
 
 	if c.debug {
 		// fmt.Printf("%s (%02X %02X %02X %02X) %-13s\n", c, c.ReadMem(c.pc), c.ReadMem(c.pc+1), c.ReadMem(c.pc+2), c.ReadMem(c.pc+3), inst+" "+op1+" "+op2)
@@ -184,8 +184,7 @@ func (c *CPU) Step() uint8 {
 		c.retCond(c.getCYF() == 1)
 
 	case "MVI":
-		value := imm1
-		c.setOp(op1, value)
+		c.setOp(op1, imm1)
 
 	case "MOV":
 		c.setOp(op1, c.getOp(op2))
@@ -231,16 +230,13 @@ func (c *CPU) Step() uint8 {
 		c.pc = c.getHL()
 
 	case "IN":
-		value := imm1
-		c.a = c.portIn(value)
+		c.a = c.portIn(imm1)
 
 	case "OUT":
-		value := imm1
-		c.portOut(value)
+		c.portOut(imm1)
 
 	case "RST":
-		addr := imm16
-		c.pc = addr
+		c.pc = uint16(lib.Must(strconv.ParseUint(op1, 16, 16)))
 
 	case "RRC":
 		sb := c.a & 0x1
@@ -292,7 +288,7 @@ func (c *CPU) Step() uint8 {
 
 		res := c.a + value + carry
 
-		c.setFlags(res&0x80 == 0x80, res == 0, c.a&0x0F+(value+carry)&0x0F > 0x0F, bits.OnesCount8(res)%2 == 0, uint16(c.a)+uint16(value+carry) > 0xFF)
+		c.setFlags(res&0x80 == 0x80, res == 0, c.a&0x0F+(value+carry)&0x0F > 0x0F, bits.OnesCount8(res)%2 == 0, uint16(c.a)+uint16(value)+uint16(carry) > 0xFF)
 
 		c.a = res
 
@@ -403,13 +399,11 @@ func (c *CPU) Step() uint8 {
 		c.WriteMem(c.getDoubleOp(op1), c.a)
 
 	case "SHLD":
-		addr := imm16
-		c.WriteMem(addr, c.getL())
-		c.WriteMem(addr+1, c.getH())
+		c.WriteMem(imm16, c.getL())
+		c.WriteMem(imm16+1, c.getH())
 
 	case "LHLD":
-		addr := imm16
-		c.setHL(uint16(c.ReadMem(addr+1))<<8 | uint16(c.ReadMem(addr)))
+		c.setHL(uint16(c.ReadMem(imm16+1))<<8 | uint16(c.ReadMem(imm16)))
 
 	case "STC":
 		c.setCYF(true)
