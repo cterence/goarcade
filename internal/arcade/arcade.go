@@ -7,23 +7,32 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/Zyko0/go-sdl3/bin/binsdl"
 	"github.com/cterence/space-invaders/internal/arcade/cpu"
 	"github.com/cterence/space-invaders/internal/arcade/memory"
+	"github.com/cterence/space-invaders/internal/arcade/ui"
 )
 
 const (
 	CPU_FREQ = 2_000_000
+	UI_FREQ  = 60
 )
 
 type arcade struct {
 	cpu    *cpu.CPU
 	memory *memory.Memory
+	ui     *ui.UI
 
 	cpuOpts []cpu.Option
 
 	cpuSC uint64
-	stop  uint64
+
+	stop       uint64
+	cpm        bool
+	headless   bool
+	unthrottle bool
 }
 
 type Option func(*arcade)
@@ -40,10 +49,29 @@ func WithStop(stop uint64) Option {
 	}
 }
 
+func WithCPM(cpm bool) Option {
+	return func(a *arcade) {
+		a.cpm = cpm
+	}
+}
+
+func WithHeadless(headless bool) Option {
+	return func(a *arcade) {
+		a.headless = headless
+	}
+}
+
+func WithUnthrottle(unthrottle bool) Option {
+	return func(a *arcade) {
+		a.unthrottle = unthrottle
+	}
+}
+
 func Run(ctx context.Context, romPaths []string, options ...Option) error {
 	a := arcade{
 		cpu:    &cpu.CPU{},
 		memory: &memory.Memory{},
+		ui:     &ui.UI{},
 		cpuSC:  0,
 	}
 
@@ -51,17 +79,35 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		o(&a)
 	}
 
+	cpuPC := uint16(0)
+
+	if a.cpm {
+		cpuPC = 0x100
+	}
+
+	a.cpu.Init(cpuPC, a.cpuOpts...)
 	a.memory.Init()
-	a.cpu.Init(a.cpuOpts...)
+
+	if !a.headless {
+		defer binsdl.Load().Unload()
+
+		a.ui.Init()
+		defer a.ui.Close()
+	}
 
 	a.cpu.ReadMem = a.memory.Read
 	a.cpu.WriteMem = a.memory.Write
+	a.ui.ReadMem = a.memory.Read
 
 	if len(romPaths) == 0 {
 		return errors.New("no rom passed to emulator")
 	}
 
-	i := 0x100
+	i := 0
+
+	if a.cpm {
+		i = 0x100
+	}
 
 	for _, p := range romPaths {
 		romBytes, err := os.ReadFile(p)
@@ -75,38 +121,37 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		}
 	}
 
-	// inject "out 0,a" at 0x0000 (signal to stop the test)
-	a.memory.Write(0x0000, 0xD3)
-	a.memory.Write(0x0001, 0x00)
+	if a.cpm {
+		// inject "out 0,a" at 0x0000 (signal to stop the test)
+		a.memory.Write(0x0000, 0xD3)
+		a.memory.Write(0x0001, 0x00)
 
-	// inject "out 1,a" at 0x0005 (signal to output some characters)
-	a.memory.Write(0x0005, 0xD3)
-	a.memory.Write(0x0006, 0x01)
-	a.memory.Write(0x0007, 0xC9)
+		// inject "out 1,a" at 0x0005 (signal to output some characters)
+		a.memory.Write(0x0005, 0xD3)
+		a.memory.Write(0x0006, 0x01)
+		a.memory.Write(0x0007, 0xC9)
+	}
 
-	// lastCPUPeriod := time.Now()
-	// loggedThrottled := false
+	lastCPUPeriod := time.Now().Add(-time.Second)
+	lastUIStep := time.Now().Add(-time.Second)
+
 	sc := uint64(0)
-
 	for a.cpu.Running && (a.stop == 0 || a.cpuSC < a.stop) {
-		// if sc >= CPU_FREQ {
-		// 	if time.Since(lastCPUPeriod) <= time.Second {
-		// 		if !loggedThrottled {
-		// 			fmt.Println("============ throttled ===============")
+		if a.unthrottle || sc < CPU_FREQ {
+			sc += uint64(a.cpu.Step())
+			a.cpuSC += sc
+		}
 
-		// 			loggedThrottled = true
-		// 		}
+		if !a.unthrottle && time.Since(lastCPUPeriod) >= time.Second {
+			lastCPUPeriod = time.Now()
+			sc = 0
+		}
 
-		// 		continue
-		// 	} else {
-		// 		lastCPUPeriod = time.Now()
-		// 		loggedThrottled = false
-		// 		sc = 0
-		// 	}
-		// }
-		a.cpuSC += uint64(a.cpu.Step())
+		if !a.headless && time.Since(lastUIStep) >= time.Second/UI_FREQ {
+			a.ui.Step()
 
-		sc += a.cpuSC
+			lastUIStep = time.Now()
+		}
 	}
 
 	return nil
@@ -131,8 +176,8 @@ func Disassemble(romPaths []string) error {
 	var i uint16
 
 	c := cpu.CPU{}
-	c.Init()
-	c.ReadMem = func(offset uint16) uint8 { return romBytes[i+offset] }
+	c.Init(0)
+	c.ReadMem = func(_ uint16) uint8 { return romBytes[i] }
 
 	for i < uint16(len(romBytes)) {
 		inst := cpu.InstByOpcode[romBytes[i]]

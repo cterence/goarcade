@@ -13,7 +13,7 @@
 set -euo pipefail
 
 README="${1:-README.md}"
-EMULATOR="./tmp/main"
+EMULATOR="./tmp/main --cpm --headless --unthrottle"
 TEST_DIR="./sub/8080/cpu_tests"
 
 # Build the emulator first

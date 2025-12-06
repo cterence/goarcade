@@ -358,9 +358,9 @@ func portOut(c *CPU, _ string) {
 			}
 
 		default:
-			fmt.Printf("unimplemented out operation for port 1: %02x", c.c)
+			fmt.Printf("unimplemented out operation for port 1: %02x\n", c.c)
 		}
 	default:
-		fmt.Printf("unimplemented out port: %02x", portNumber)
+		fmt.Printf("unimplemented out port: %02x\n", portNumber)
 	}
 }

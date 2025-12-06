@@ -38,9 +38,9 @@ func WithDebug(debug bool) Option {
 	}
 }
 
-func (c *CPU) Init(options ...Option) {
+func (c *CPU) Init(pc uint16, options ...Option) {
 	c.Running = true
-	c.pc = 0x100
+	c.pc = pc
 	c.sp = 0
 	c.b = 0
 	c.c = 0

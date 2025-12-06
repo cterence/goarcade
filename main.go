@@ -12,8 +12,11 @@ import (
 
 func main() {
 	var (
-		debug bool
-		stop  uint64
+		debug      bool
+		stop       uint64
+		cpm        bool
+		headless   bool
+		unthrottle bool
 	)
 
 	cmd := &cli.Command{
@@ -41,6 +44,25 @@ func main() {
 				Destination: &debug,
 			},
 
+			&cli.BoolFlag{
+				Name:        "headless",
+				Usage:       "run without UI window",
+				Destination: &headless,
+			},
+
+			&cli.BoolFlag{
+				Name:        "cpm",
+				Usage:       "run in CP/M compatibility mode (for CPU tests)",
+				Destination: &cpm,
+			},
+
+			&cli.BoolFlag{
+				Name:        "unthrottle",
+				Aliases:     []string{"u"},
+				Usage:       "do not throttle cpu at 2MHz",
+				Destination: &unthrottle,
+			},
+
 			&cli.Uint64Flag{
 				Name:        "stop",
 				Aliases:     []string{"s"},
@@ -54,11 +76,15 @@ func main() {
 				cmd.Args().Slice(),
 				arcade.WithDebug(debug),
 				arcade.WithStop(stop),
+				arcade.WithCPM(cpm),
+				arcade.WithHeadless(headless),
+				arcade.WithUnthrottle(unthrottle),
 			)
 		},
 		Commands: []*cli.Command{
 			{
 				Name:      "disassemble",
+				Aliases:   []string{"d"},
 				Usage:     "disassemble a 8080 rom",
 				ArgsUsage: "[ordered rom part paths]",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
