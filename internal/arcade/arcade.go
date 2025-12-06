@@ -166,8 +166,6 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 				}
 			case <-aCtx.Done():
 				return nil
-
-			default:
 			}
 		}
 	}

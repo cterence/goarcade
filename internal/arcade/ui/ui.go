@@ -12,8 +12,7 @@ type UI struct {
 	RequestInterrupt func(uint8)
 	SendInput        func(uint8, uint8, bool)
 
-	framebuffer [WIDTH][HEIGHT]uint8
-	cancel      context.CancelFunc
+	cancel context.CancelFunc
 
 	window   *sdl.Window
 	renderer *sdl.Renderer
@@ -31,7 +30,6 @@ const (
 var palette = [4]uint32{0xFF000000, 0xFFFFFFFF, 0xFF00FF00, 0xFFFF0000}
 
 func (ui *UI) Init(cancel context.CancelFunc) {
-	ui.framebuffer = [WIDTH][HEIGHT]uint8{}
 	ui.cancel = cancel
 
 	err := sdl.Init(sdl.INIT_VIDEO)
