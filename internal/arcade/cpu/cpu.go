@@ -14,10 +14,19 @@ type CPU struct {
 
 	debug bool
 
-	sc uint64
+	// Cycle counter
+	cyc uint64
+	// Program counter
 	pc uint16
+	// Stack pointer
 	sp uint16
 
+	// Shift register
+	sr uint16
+	// Shift offset
+	so uint8
+
+	// Registers
 	a uint8
 	f uint8
 	b uint8
@@ -27,7 +36,11 @@ type CPU struct {
 	h uint8
 	l uint8
 
+	// Interrupt switch
 	interrupts bool
+
+	// IO ports
+	ioPorts [8]uint8
 }
 
 type Option func(*CPU)
@@ -42,6 +55,9 @@ func (c *CPU) Init(pc uint16, options ...Option) {
 	c.Running = true
 	c.pc = pc
 	c.sp = 0
+	c.sr = 0
+	c.cyc = 0
+	c.so = 0
 	c.b = 0
 	c.c = 0
 	c.d = 0
@@ -51,6 +67,7 @@ func (c *CPU) Init(pc uint16, options ...Option) {
 	c.a = 0
 	c.f = 2
 	c.interrupts = false
+	c.ioPorts = [8]uint8{}
 
 	for _, o := range options {
 		o(c)
@@ -66,7 +83,7 @@ func (c *CPU) String() string {
 	b.WriteString(", DE: " + fmt.Sprintf("%04X", uint16(c.d)<<8|uint16(c.e)))
 	b.WriteString(", HL: " + fmt.Sprintf("%04X", uint16(c.h)<<8|uint16(c.l)))
 	b.WriteString(", SP: " + fmt.Sprintf("%04X", c.sp))
-	b.WriteString(", CYC: " + strconv.FormatUint(c.sc, 10))
+	b.WriteString(", CYC: " + strconv.FormatUint(c.cyc, 10))
 
 	return b.String()
 }
@@ -87,7 +104,22 @@ func (c *CPU) Step() uint8 {
 		c.pc += uint16(inst.Length)
 	}
 
-	c.sc += uint64(inst.States)
+	c.cyc += uint64(inst.Cycles)
 
-	return inst.States
+	return inst.Cycles
+}
+
+func (c *CPU) RequestInterrupt(num uint8) {
+	if c.interrupts {
+		c.push(c.pc)
+		c.pc = uint16(8 * num)
+	}
+}
+
+func (c *CPU) SendInput(port, bit uint8, value bool) {
+	if value {
+		c.ioPorts[port] |= 1 << bit
+	} else {
+		c.ioPorts[port] &= ^(1 << bit)
+	}
 }

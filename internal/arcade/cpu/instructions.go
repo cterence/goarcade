@@ -100,7 +100,7 @@ func (c *CPU) call() {
 func (c *CPU) callCond(cond bool) {
 	if cond {
 		c.call()
-		c.sc += 6
+		c.cyc += 6
 	}
 }
 
@@ -111,7 +111,7 @@ func (c *CPU) ret() {
 func (c *CPU) retCond(cond bool) {
 	if cond {
 		c.ret()
-		c.sc += 6
+		c.cyc += 6
 	}
 }
 
@@ -332,7 +332,16 @@ func ori(c *CPU, _ string) {
 	c.a = res
 }
 
-func portIn(c *CPU, _ string) {}
+func portIn(c *CPU, _ string) {
+	portNumber := c.ReadMem(c.pc + 1)
+
+	switch portNumber {
+	case 3:
+		c.a = uint8(c.sr >> (8 - c.so))
+	default:
+		c.a = c.ioPorts[portNumber]
+	}
+}
 
 func portOut(c *CPU, _ string) {
 	portNumber := c.ReadMem(c.pc + 1)
@@ -340,8 +349,6 @@ func portOut(c *CPU, _ string) {
 	switch portNumber {
 	case 0:
 		c.Running = false
-
-		fmt.Println()
 	case 1:
 		switch c.c {
 		case 2:
@@ -360,6 +367,15 @@ func portOut(c *CPU, _ string) {
 		default:
 			fmt.Printf("unimplemented out operation for port 1: %02x\n", c.c)
 		}
+	case 2:
+		c.so = c.a & 0x7
+	case 3:
+		// TODO: sound
+	case 4:
+		c.sr = uint16(c.a)<<8 | c.sr>>8
+	case 5:
+		// TODO: sound
+	case 6: // NOP for watchdog
 	default:
 		fmt.Printf("unimplemented out port: %02x\n", portNumber)
 	}

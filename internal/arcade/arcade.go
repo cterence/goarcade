@@ -30,9 +30,6 @@ type arcade struct {
 
 	cpuOpts []cpu.Option
 
-	cpuSC uint64
-
-	stop       uint64
 	cpm        bool
 	headless   bool
 	unthrottle bool
@@ -43,12 +40,6 @@ type Option func(*arcade)
 func WithDebug(debug bool) Option {
 	return func(a *arcade) {
 		a.cpuOpts = append(a.cpuOpts, cpu.WithDebug(debug))
-	}
-}
-
-func WithStop(stop uint64) Option {
-	return func(a *arcade) {
-		a.stop = stop
 	}
 }
 
@@ -74,13 +65,10 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 	aCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	trapSigInt(cancel)
-
 	a := arcade{
 		cpu:    &cpu.CPU{},
 		memory: &memory.Memory{},
 		ui:     &ui.UI{},
-		cpuSC:  0,
 	}
 
 	for _, o := range options {
@@ -101,11 +89,15 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 
 		a.ui.Init(cancel)
 		defer a.ui.Close()
+
+		trapSigInt(cancel)
 	}
 
 	a.cpu.ReadMem = a.memory.Read
 	a.cpu.WriteMem = a.memory.Write
 	a.ui.ReadMem = a.memory.Read
+	a.ui.RequestInterrupt = a.cpu.RequestInterrupt
+	a.ui.SendInput = a.cpu.SendInput
 
 	if len(romPaths) == 0 {
 		return errors.New("no rom passed to emulator")
@@ -141,39 +133,42 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 	}
 
 	cpuCycles := uint64(0)
-	uiCycles := uint64(0)
+
+	frameTicker := time.NewTicker(time.Second / FPS)
+	defer frameTicker.Stop()
 
 	for {
-		// Check context occasionally
-		if cpuCycles&0x3FFF == 0 {
-			select {
-			case <-aCtx.Done():
-				return nil
-			default:
-			}
-		}
-
 		if !a.cpu.Running {
 			return nil
 		}
 
-		if a.unthrottle || (cpuCycles < CPU_TPS && (a.stop == 0 || a.cpuSC < a.stop)) {
-			cycles := uint64(a.cpu.Step())
-			cpuCycles += cycles
-			a.cpuSC += cycles
-			uiCycles += cycles
-		}
+		if a.unthrottle {
+			cpuCycles += uint64(a.cpu.Step())
 
-		if !a.headless && uiCycles >= CPU_TPS_PER_FRAME {
-			a.ui.Step()
+			if cpuCycles >= CPU_TPS_PER_FRAME {
+				cpuCycles = 0
 
-			uiCycles -= CPU_TPS_PER_FRAME
-		}
+				if !a.headless {
+					a.ui.Step()
+				}
+			}
+		} else {
+			select {
+			case <-frameTicker.C:
+				for cpuCycles < CPU_TPS_PER_FRAME {
+					cpuCycles += uint64(a.cpu.Step())
+				}
 
-		if !a.unthrottle && cpuCycles >= CPU_TPS {
-			time.Sleep(time.Millisecond)
+				cpuCycles = 0
 
-			cpuCycles = 0
+				if !a.headless {
+					a.ui.Step()
+				}
+			case <-aCtx.Done():
+				return nil
+
+			default:
+			}
 		}
 	}
 }

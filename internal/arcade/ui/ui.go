@@ -8,7 +8,9 @@ import (
 )
 
 type UI struct {
-	ReadMem func(uint16) uint8
+	ReadMem          func(uint16) uint8
+	RequestInterrupt func(uint8)
+	SendInput        func(uint8, uint8, bool)
 
 	framebuffer [WIDTH][HEIGHT]uint8
 	cancel      context.CancelFunc
@@ -86,6 +88,14 @@ func (ui *UI) drawVRAM() {
 			pixel := (pixels >> (7 - y%8)) & 1
 			pixelData[rowStart+int(x)] = palette[pixel]
 		}
+
+		if y == HEIGHT/2 {
+			ui.RequestInterrupt(1)
+		}
+
+		if y == HEIGHT-1 {
+			ui.RequestInterrupt(2)
+		}
 	}
 
 	if err := ui.texture.Update(nil, ui.surface.Pixels(), ui.surface.Pitch); err != nil {
@@ -112,6 +122,35 @@ func (ui *UI) handleEvents() {
 		switch event.Type {
 		case sdl.EVENT_QUIT, sdl.EVENT_WINDOW_DESTROYED:
 			ui.cancel()
+
+		case sdl.EVENT_KEY_DOWN, sdl.EVENT_KEY_UP:
+			pressed := event.Type == sdl.EVENT_KEY_DOWN
+
+			switch event.KeyboardEvent().Key {
+			// Menu
+			case sdl.K_C: // Add coin
+				ui.SendInput(1, 0, pressed)
+			case sdl.K_1: // Select 1 player
+				ui.SendInput(1, 2, pressed)
+			case sdl.K_2: // Select 2 players
+				ui.SendInput(1, 1, pressed)
+
+			// P1 controls
+			case sdl.K_A: // Left
+				ui.SendInput(1, 5, pressed)
+			case sdl.K_D: // Right
+				ui.SendInput(1, 6, pressed)
+			case sdl.K_W: // Shoot
+				ui.SendInput(1, 4, pressed)
+
+			// P2 controls
+			case sdl.K_LEFT: // Left
+				ui.SendInput(2, 5, pressed)
+			case sdl.K_RIGHT: // Right
+				ui.SendInput(2, 6, pressed)
+			case sdl.K_UP: // Shoot
+				ui.SendInput(2, 4, pressed)
+			}
 		}
 	}
 }
