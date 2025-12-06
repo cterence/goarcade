@@ -79,6 +79,10 @@ func (a *APU) Init(soundDir string) {
 }
 
 func (a *APU) TogglePause(pause bool) {
+	if a.streams == nil {
+		return
+	}
+
 	if pause {
 		if err := a.device.Pause(); err != nil {
 			panic("failed to pause default audio device: " + err.Error())
