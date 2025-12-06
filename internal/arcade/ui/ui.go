@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"unsafe"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )
@@ -44,14 +45,16 @@ func (ui *UI) Init(cancel context.CancelFunc) {
 	}
 
 	if ui.texture == nil {
-		ui.texture, err = ui.renderer.CreateTexture(sdl.PIXELFORMAT_ARGB8888, sdl.TEXTUREACCESS_STREAMING, int(WIDTH*SCALE), int(HEIGHT*SCALE))
+		ui.texture, err = ui.renderer.CreateTexture(sdl.PIXELFORMAT_ARGB8888, sdl.TEXTUREACCESS_STREAMING, int(WIDTH), int(HEIGHT))
 		if err != nil {
 			panic("failed to create texture: " + err.Error())
 		}
+
+		ui.texture.SetScaleMode(sdl.SCALEMODE_NEAREST)
 	}
 
 	if ui.surface == nil {
-		ui.surface, err = sdl.CreateSurface(int(WIDTH*SCALE), int(HEIGHT*SCALE), sdl.PIXELFORMAT_ARGB8888)
+		ui.surface, err = sdl.CreateSurface(int(WIDTH), int(HEIGHT), sdl.PIXELFORMAT_ARGB8888)
 		if err != nil {
 			panic("failed to create surface: " + err.Error())
 		}
@@ -66,37 +69,22 @@ func (ui *UI) Close() {
 }
 
 func (ui *UI) Step() {
-	ui.updateFramebuffer()
-	ui.drawFramebuffer()
+	ui.drawVRAM()
 	ui.handleEvents()
 }
 
-func (ui *UI) updateFramebuffer() {
+func (ui *UI) drawVRAM() {
+	pixels := ui.surface.Pixels()
+	pitch := int(ui.surface.Pitch) / 4
+	pixelData := unsafe.Slice((*uint32)(unsafe.Pointer(&pixels[0])), len(pixels)/4)
+
 	for y := range HEIGHT {
+		rowStart := int(y) * pitch
 		for x := range WIDTH {
 			addr := VRAM_START + (x * (HEIGHT / 8)) + ((HEIGHT - y - 1) / 8)
 			pixels := ui.ReadMem(addr)
 			pixel := (pixels >> (7 - y%8)) & 1
-			ui.framebuffer[x][y] = pixel
-		}
-	}
-}
-
-func (ui *UI) drawFramebuffer() {
-	for y := range HEIGHT {
-		for x := range WIDTH {
-			rc := &sdl.Rect{
-				X: int32(x * SCALE),
-				Y: int32(y * SCALE),
-				W: int32(SCALE),
-				H: int32(SCALE),
-			}
-
-			color := palette[ui.framebuffer[x][y]]
-
-			if err := ui.surface.FillRect(rc, color); err != nil {
-				panic("failed to fill rect: " + err.Error())
-			}
+			pixelData[rowStart+int(x)] = palette[pixel]
 		}
 	}
 

@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	CPU_FREQ = 2_000_000
-	UI_FREQ  = 60
+	CPU_TPS           = 2_000_000
+	FPS               = 60
+	CPU_TPS_PER_FRAME = CPU_TPS / FPS
 )
 
 type arcade struct {
@@ -139,35 +140,40 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		a.memory.Write(0x0007, 0xC9)
 	}
 
-	lastCPUPeriod := time.Now().Add(-time.Second)
-	lastUIStep := time.Now().Add(-time.Second)
-
-	sc := uint64(0)
+	cpuCycles := uint64(0)
+	uiCycles := uint64(0)
 
 	for {
-		select {
-		case <-aCtx.Done():
-			return nil
-		default:
-			if a.cpu.Running {
-				if a.unthrottle || (sc < CPU_FREQ && (a.stop == 0 || a.cpuSC < a.stop)) {
-					sc += uint64(a.cpu.Step())
-					a.cpuSC += sc
-				}
-
-				if !a.unthrottle && time.Since(lastCPUPeriod) >= time.Second {
-					lastCPUPeriod = time.Now()
-					sc = 0
-				}
-
-				if !a.headless && time.Since(lastUIStep) >= time.Second/UI_FREQ {
-					a.ui.Step()
-
-					lastUIStep = time.Now()
-				}
-			} else {
-				cancel()
+		// Check context occasionally
+		if cpuCycles&0x3FFF == 0 {
+			select {
+			case <-aCtx.Done():
+				return nil
+			default:
 			}
+		}
+
+		if !a.cpu.Running {
+			return nil
+		}
+
+		if a.unthrottle || (cpuCycles < CPU_TPS && (a.stop == 0 || a.cpuSC < a.stop)) {
+			cycles := uint64(a.cpu.Step())
+			cpuCycles += cycles
+			a.cpuSC += cycles
+			uiCycles += cycles
+		}
+
+		if !a.headless && uiCycles >= CPU_TPS_PER_FRAME {
+			a.ui.Step()
+
+			uiCycles -= CPU_TPS_PER_FRAME
+		}
+
+		if !a.unthrottle && cpuCycles >= CPU_TPS {
+			time.Sleep(time.Millisecond)
+
+			cpuCycles = 0
 		}
 	}
 }
