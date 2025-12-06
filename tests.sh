@@ -13,7 +13,7 @@
 set -euo pipefail
 
 README="${1:-README.md}"
-EMULATOR="./tmp/main --cpm --headless --unthrottle"
+EMULATOR="./tmp/main"
 TEST_DIR="./sub/8080/cpu_tests"
 
 # Build the emulator first
@@ -86,7 +86,7 @@ for test_file in "${TEST_FILES[@]}"; do
     echo "Running $test_file..."
 
     # Run the test and capture output (with timeout)
-    output=$(timeout 120s "$EMULATOR" "$test_path" 2>&1 || true)
+    output=$(timeout 120s "$EMULATOR" --cpm --headless --unthrottle "$test_path" 2>&1 || true)
 
     # Update the README section
     update_section "$test_file" "$output" "$README"

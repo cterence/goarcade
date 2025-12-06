@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"context"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
@@ -8,6 +10,7 @@ type UI struct {
 	ReadMem func(uint16) uint8
 
 	framebuffer [WIDTH][HEIGHT]uint8
+	cancel      context.CancelFunc
 
 	window   *sdl.Window
 	renderer *sdl.Renderer
@@ -22,8 +25,11 @@ const (
 	SCALE      uint16 = 3
 )
 
-func (ui *UI) Init() {
+var palette = [4]uint32{0xFF000000, 0xFFFFFFFF, 0xFF00FF00, 0xFFFF0000}
+
+func (ui *UI) Init(cancel context.CancelFunc) {
 	ui.framebuffer = [WIDTH][HEIGHT]uint8{}
+	ui.cancel = cancel
 
 	err := sdl.Init(sdl.INIT_VIDEO)
 	if err != nil {
@@ -86,7 +92,7 @@ func (ui *UI) drawFramebuffer() {
 				H: int32(SCALE),
 			}
 
-			color := 0xFFFFFFFF * uint32(ui.framebuffer[x][y])
+			color := palette[ui.framebuffer[x][y]]
 
 			if err := ui.surface.FillRect(rc, color); err != nil {
 				panic("failed to fill rect: " + err.Error())
@@ -117,7 +123,7 @@ func (ui *UI) handleEvents() {
 	for sdl.PollEvent(&event) {
 		switch event.Type {
 		case sdl.EVENT_QUIT, sdl.EVENT_WINDOW_DESTROYED:
-			panic(sdl.EndLoop)
+			ui.cancel()
 		}
 	}
 }

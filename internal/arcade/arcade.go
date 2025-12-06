@@ -6,7 +6,9 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
@@ -68,6 +70,11 @@ func WithUnthrottle(unthrottle bool) Option {
 }
 
 func Run(ctx context.Context, romPaths []string, options ...Option) error {
+	aCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	trapSigInt(cancel)
+
 	a := arcade{
 		cpu:    &cpu.CPU{},
 		memory: &memory.Memory{},
@@ -91,7 +98,7 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 	if !a.headless {
 		defer binsdl.Load().Unload()
 
-		a.ui.Init()
+		a.ui.Init(cancel)
 		defer a.ui.Close()
 	}
 
@@ -136,25 +143,33 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 	lastUIStep := time.Now().Add(-time.Second)
 
 	sc := uint64(0)
-	for a.cpu.Running && (a.stop == 0 || a.cpuSC < a.stop) {
-		if a.unthrottle || sc < CPU_FREQ {
-			sc += uint64(a.cpu.Step())
-			a.cpuSC += sc
-		}
 
-		if !a.unthrottle && time.Since(lastCPUPeriod) >= time.Second {
-			lastCPUPeriod = time.Now()
-			sc = 0
-		}
+	for {
+		select {
+		case <-aCtx.Done():
+			return nil
+		default:
+			if a.cpu.Running {
+				if a.unthrottle || (sc < CPU_FREQ && (a.stop == 0 || a.cpuSC < a.stop)) {
+					sc += uint64(a.cpu.Step())
+					a.cpuSC += sc
+				}
 
-		if !a.headless && time.Since(lastUIStep) >= time.Second/UI_FREQ {
-			a.ui.Step()
+				if !a.unthrottle && time.Since(lastCPUPeriod) >= time.Second {
+					lastCPUPeriod = time.Now()
+					sc = 0
+				}
 
-			lastUIStep = time.Now()
+				if !a.headless && time.Since(lastUIStep) >= time.Second/UI_FREQ {
+					a.ui.Step()
+
+					lastUIStep = time.Now()
+				}
+			} else {
+				cancel()
+			}
 		}
 	}
-
-	return nil
 }
 
 func Disassemble(romPaths []string) error {
@@ -206,4 +221,14 @@ func Disassemble(romPaths []string) error {
 	}
 
 	return nil
+}
+
+func trapSigInt(cancel context.CancelFunc) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-c
+		cancel()
+	}()
 }
