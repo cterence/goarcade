@@ -8,10 +8,6 @@ type Memory struct {
 	memory [MEMORY_SIZE]uint8
 }
 
-func (m *Memory) Init() {
-	m.memory = [MEMORY_SIZE]uint8{}
-}
-
 func (m *Memory) Read(addr uint16) uint8 {
 	return m.memory[addr]
 }

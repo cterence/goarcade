@@ -91,7 +91,7 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
-				Name:      "disassemble",
+				Name:      "dasm",
 				Aliases:   []string{"d"},
 				Usage:     "disassemble a 8080 rom",
 				ArgsUsage: "[ordered rom part paths]",

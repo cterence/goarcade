@@ -77,6 +77,24 @@ func WithUnthrottle(unthrottle bool) Option {
 	}
 }
 
+func (a *arcade) Init() {
+	cpuPC := uint16(0)
+
+	if a.cpm {
+		cpuPC = 0x100
+	}
+
+	a.cpu.Init(cpuPC, a.cpuOpts...)
+
+	if !a.headless {
+		a.ui.Init()
+
+		if !a.noAudio {
+			a.apu.Init(a.soundDir)
+		}
+	}
+}
+
 func Run(ctx context.Context, romPaths []string, options ...Option) error {
 	aCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -88,34 +106,6 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		apu:    &apu.APU{},
 	}
 
-	for _, o := range options {
-		o(&a)
-	}
-
-	cpuPC := uint16(0)
-
-	if a.cpm {
-		cpuPC = 0x100
-	}
-
-	a.cpu.Init(cpuPC, a.cpuOpts...)
-	a.memory.Init()
-
-	if !a.headless {
-		defer binsdl.Load().Unload()
-
-		a.ui.Init(cancel)
-		defer a.ui.Close()
-
-		trapSigInt(cancel)
-
-		if !a.noAudio {
-			a.apu.Init(a.soundDir)
-
-			defer a.apu.Close()
-		}
-	}
-
 	a.cpu.ReadMem = a.memory.Read
 	a.cpu.WriteMem = a.memory.Write
 	a.cpu.PlaySound = a.apu.PlaySound
@@ -124,10 +114,27 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 	a.ui.ReadMem = a.memory.Read
 	a.ui.RequestInterrupt = a.cpu.RequestInterrupt
 	a.ui.SendInput = a.cpu.SendInput
+	a.ui.Reset = a.Init
+	a.ui.Cancel = cancel
+	a.ui.TogglePauseAudio = a.apu.TogglePause
+
+	for _, o := range options {
+		o(&a)
+	}
 
 	if len(romPaths) == 0 {
 		return errors.New("no rom passed to emulator")
 	}
+
+	if !a.headless {
+		defer binsdl.Load().Unload()
+		defer a.apu.Close()
+		defer a.ui.Close()
+
+		trapSigInt(cancel)
+	}
+
+	a.Init()
 
 	i := 0
 
@@ -163,12 +170,8 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 	frameTicker := time.NewTicker(time.Second / FPS)
 	defer frameTicker.Stop()
 
-	for {
-		if !a.cpu.Running {
-			return nil
-		}
-
-		if a.unthrottle {
+	if a.unthrottle {
+		for a.cpu.Running {
 			cpuCycles += uint64(a.cpu.Step())
 
 			if cpuCycles >= CPU_TPS_PER_FRAME {
@@ -178,23 +181,29 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 					a.ui.Step()
 				}
 			}
-		} else {
-			select {
-			case <-frameTicker.C:
-				for cpuCycles < CPU_TPS_PER_FRAME {
-					cpuCycles += uint64(a.cpu.Step())
-				}
-
-				cpuCycles = 0
-
-				if !a.headless {
-					a.ui.Step()
-				}
-			case <-aCtx.Done():
-				return nil
-			}
 		}
 	}
+
+	for a.cpu.Running {
+		select {
+		case <-frameTicker.C:
+			for !a.ui.Paused && cpuCycles < CPU_TPS_PER_FRAME {
+				cpuCycles += uint64(a.cpu.Step())
+			}
+
+			if cpuCycles >= CPU_TPS_PER_FRAME {
+				cpuCycles = 0
+			}
+
+			if !a.headless {
+				a.ui.Step()
+			}
+		case <-aCtx.Done():
+			return nil
+		}
+	}
+
+	return nil
 }
 
 func Disassemble(romPaths []string) error {

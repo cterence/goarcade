@@ -11,8 +11,11 @@ type UI struct {
 	ReadMem          func(uint16) uint8
 	RequestInterrupt func(uint8)
 	SendInput        func(uint8, uint8, bool)
+	Reset            func()
+	TogglePauseAudio func(bool)
+	Cancel           context.CancelFunc
 
-	cancel context.CancelFunc
+	Paused bool
 
 	window   *sdl.Window
 	renderer *sdl.Renderer
@@ -32,8 +35,8 @@ const (
 	COLOR_GREEN uint32 = 0xFF00FF00
 )
 
-func (ui *UI) Init(cancel context.CancelFunc) {
-	ui.cancel = cancel
+func (ui *UI) Init() {
+	ui.Paused = false
 
 	err := sdl.Init(sdl.INIT_VIDEO)
 	if err != nil {
@@ -104,11 +107,11 @@ func (ui *UI) drawVRAM() {
 			pixelData[rowStart+int(x)] = color
 		}
 
-		if y == HEIGHT/2 {
+		if y == HEIGHT/2 && !ui.Paused {
 			ui.RequestInterrupt(1)
 		}
 
-		if y == HEIGHT-1 {
+		if y == HEIGHT-1 && !ui.Paused {
 			ui.RequestInterrupt(2)
 		}
 	}
@@ -136,12 +139,22 @@ func (ui *UI) handleEvents() {
 	for sdl.PollEvent(&event) {
 		switch event.Type {
 		case sdl.EVENT_QUIT, sdl.EVENT_WINDOW_DESTROYED:
-			ui.cancel()
+			ui.Cancel()
 
 		case sdl.EVENT_KEY_DOWN, sdl.EVENT_KEY_UP:
 			pressed := event.Type == sdl.EVENT_KEY_DOWN
 
 			switch event.KeyboardEvent().Key {
+			case sdl.K_R:
+				if !pressed {
+					ui.Reset()
+				}
+			case sdl.K_P:
+				if !pressed {
+					ui.Paused = !ui.Paused
+					ui.TogglePauseAudio(ui.Paused)
+				}
+
 			// Menu
 			case sdl.K_C: // Add coin
 				ui.SendInput(1, 0, pressed)

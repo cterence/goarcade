@@ -10,6 +10,7 @@ import (
 )
 
 type APU struct {
+	device   sdl.AudioDeviceID
 	streams  []*sdl.AudioStream
 	sounds   [][]uint8
 	looping  []bool
@@ -34,7 +35,7 @@ func (a *APU) Init(soundDir string) {
 		Freq:     11025,
 	}
 
-	device, err := sdl.AUDIO_DEVICE_DEFAULT_PLAYBACK.OpenAudioDevice(spec)
+	a.device, err = sdl.AUDIO_DEVICE_DEFAULT_PLAYBACK.OpenAudioDevice(spec)
 	if err != nil {
 		panic("failed to get default playback audio device: " + err.Error())
 	}
@@ -67,10 +68,24 @@ func (a *APU) Init(soundDir string) {
 			}
 
 			if a.streams[i].Device() == 0 {
-				if err := device.BindAudioStream(a.streams[i]); err != nil {
+				if err := a.device.BindAudioStream(a.streams[i]); err != nil {
 					panic("failed to bind audio stream to device: " + err.Error())
 				}
 			}
+		}
+	}
+
+	a.TogglePause(false)
+}
+
+func (a *APU) TogglePause(pause bool) {
+	if pause {
+		if err := a.device.Pause(); err != nil {
+			panic("failed to pause default audio device: " + err.Error())
+		}
+	} else {
+		if err := a.device.Resume(); err != nil {
+			panic("failed to resume default audio device: " + err.Error())
 		}
 	}
 }
