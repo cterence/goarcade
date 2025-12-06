@@ -5,21 +5,10 @@
 ### TST8080.COM
 <!-- TST8080.COM -->
 ```txt
-panic: failed to init sdl: No available video device
+MICROCOSM ASSOCIATES 8080/8085 CPU DIAGNOSTIC
+ VERSION 1.0  (C) 1980
 
-goroutine 1 [running, locked to thread]:
-github.com/cterence/space-invaders/internal/arcade/ui.(*UI).Init(0xc000190000)
-	/home/runner/work/space-invaders/space-invaders/internal/arcade/ui/ui.go:30 +0x265
-github.com/cterence/space-invaders/internal/arcade.Run({0xc0000122e8?, 0xc0000b3a30?}, {0xc00003cac0, 0x1, 0xe?}, {0xc0000b3a00, 0x5, 0x0?})
-	/home/runner/work/space-invaders/space-invaders/internal/arcade/arcade.go:94 +0x21e
-main.main.func2({0x9d8508, 0xc00009d5f0}, 0xc00009d5f0?)
-	/home/runner/work/space-invaders/space-invaders/main.go:74 +0x17b
-github.com/urfave/cli/v3.(*Command).run(0xc0000ca2c8, {0x9d8508, 0xc00009d5f0}, {0xc000024040, 0x2, 0x2})
-	/home/runner/go/pkg/mod/github.com/urfave/cli/v3@v3.6.1/command_run.go:354 +0x28ec
-github.com/urfave/cli/v3.(*Command).Run(...)
-	/home/runner/go/pkg/mod/github.com/urfave/cli/v3@v3.6.1/command_run.go:94
-main.main()
-	/home/runner/work/space-invaders/space-invaders/main.go:97 +0x6fb
+ CPU IS OPERATIONAL
 ```
 <!-- /TST8080.COM -->
 
@@ -27,21 +16,7 @@ main.main()
 
 <!-- 8080PRE.COM -->
 ```txt
-panic: failed to init sdl: No available video device
-
-goroutine 1 [running, locked to thread]:
-github.com/cterence/space-invaders/internal/arcade/ui.(*UI).Init(0xc000110000)
-	/home/runner/work/space-invaders/space-invaders/internal/arcade/ui/ui.go:30 +0x265
-github.com/cterence/space-invaders/internal/arcade.Run({0xc0000122e8?, 0xc0000b3a30?}, {0xc00003cac0, 0x1, 0xe?}, {0xc0000b3a00, 0x5, 0x0?})
-	/home/runner/work/space-invaders/space-invaders/internal/arcade/arcade.go:94 +0x21e
-main.main.func2({0x9d8508, 0xc00009d5f0}, 0xc00009d5f0?)
-	/home/runner/work/space-invaders/space-invaders/main.go:74 +0x17b
-github.com/urfave/cli/v3.(*Command).run(0xc0000ca2c8, {0x9d8508, 0xc00009d5f0}, {0xc000024040, 0x2, 0x2})
-	/home/runner/go/pkg/mod/github.com/urfave/cli/v3@v3.6.1/command_run.go:354 +0x28ec
-github.com/urfave/cli/v3.(*Command).Run(...)
-	/home/runner/go/pkg/mod/github.com/urfave/cli/v3@v3.6.1/command_run.go:94
-main.main()
-	/home/runner/work/space-invaders/space-invaders/main.go:97 +0x6fb
+8080 Preliminary tests complete
 ```
 <!-- /8080PRE.COM -->
 
@@ -49,21 +24,15 @@ main.main()
 
 <!-- CPUTEST.COM -->
 ```txt
-panic: failed to init sdl: No available video device
 
-goroutine 1 [running, locked to thread]:
-github.com/cterence/space-invaders/internal/arcade/ui.(*UI).Init(0xc00019e000)
-	/home/runner/work/space-invaders/space-invaders/internal/arcade/ui/ui.go:30 +0x265
-github.com/cterence/space-invaders/internal/arcade.Run({0xc0001242d0?, 0xc00013fa30?}, {0xc00011ea70, 0x1, 0xe?}, {0xc00013fa00, 0x5, 0x0?})
-	/home/runner/work/space-invaders/space-invaders/internal/arcade/arcade.go:94 +0x21e
-main.main.func2({0x9d8508, 0xc00011d5f0}, 0xc00011d5f0?)
-	/home/runner/work/space-invaders/space-invaders/main.go:74 +0x17b
-github.com/urfave/cli/v3.(*Command).run(0xc00015e2c8, {0x9d8508, 0xc00011d5f0}, {0xc00012a000, 0x2, 0x2})
-	/home/runner/go/pkg/mod/github.com/urfave/cli/v3@v3.6.1/command_run.go:354 +0x28ec
-github.com/urfave/cli/v3.(*Command).Run(...)
-	/home/runner/go/pkg/mod/github.com/urfave/cli/v3@v3.6.1/command_run.go:94
-main.main()
-	/home/runner/work/space-invaders/space-invaders/main.go:97 +0x6fb
+DIAGNOSTICS II V1.2 - CPU TEST
+COPYRIGHT (C) 1981 - SUPERSOFT ASSOCIATES
+
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+CPU IS 8080/8085
+BEGIN TIMING TEST
+END TIMING TEST
+CPU TESTS OK
 ```
 <!-- /CPUTEST.COM -->
 
@@ -71,21 +40,33 @@ main.main()
 
 <!-- 8080EXM.COM -->
 ```txt
-panic: failed to init sdl: No available video device
-
-goroutine 1 [running, locked to thread]:
-github.com/cterence/space-invaders/internal/arcade/ui.(*UI).Init(0xc00019e000)
-	/home/runner/work/space-invaders/space-invaders/internal/arcade/ui/ui.go:30 +0x265
-github.com/cterence/space-invaders/internal/arcade.Run({0xc0001262d0?, 0xc00013fa30?}, {0xc000120a70, 0x1, 0xe?}, {0xc00013fa00, 0x5, 0x0?})
-	/home/runner/work/space-invaders/space-invaders/internal/arcade/arcade.go:94 +0x21e
-main.main.func2({0x9d8508, 0xc00011f5f0}, 0xc00011f5f0?)
-	/home/runner/work/space-invaders/space-invaders/main.go:74 +0x17b
-github.com/urfave/cli/v3.(*Command).run(0xc00015e2c8, {0x9d8508, 0xc00011f5f0}, {0xc00012a000, 0x2, 0x2})
-	/home/runner/go/pkg/mod/github.com/urfave/cli/v3@v3.6.1/command_run.go:354 +0x28ec
-github.com/urfave/cli/v3.(*Command).Run(...)
-	/home/runner/go/pkg/mod/github.com/urfave/cli/v3@v3.6.1/command_run.go:94
-main.main()
-	/home/runner/work/space-invaders/space-invaders/main.go:97 +0x6fb
+8080 instruction exerciser
+dad <b,d,h,sp>................  PASS! crc is:14474ba6
+aluop nn......................  PASS! crc is:9e922f9e
+aluop <b,c,d,e,h,l,m,a>.......  PASS! crc is:cf762c86
+<daa,cma,stc,cmc>.............  PASS! crc is:bb3f030c
+<inr,dcr> a...................  PASS! crc is:adb6460e
+<inr,dcr> b...................  PASS! crc is:83ed1345
+<inx,dcx> b...................  PASS! crc is:f79287cd
+<inr,dcr> c...................  PASS! crc is:e5f6721b
+<inr,dcr> d...................  PASS! crc is:15b5579a
+<inx,dcx> d...................  PASS! crc is:7f4e2501
+<inr,dcr> e...................  PASS! crc is:cf2ab396
+<inr,dcr> h...................  PASS! crc is:12b2952c
+<inx,dcx> h...................  PASS! crc is:9f2b23c0
+<inr,dcr> l...................  PASS! crc is:ff57d356
+<inr,dcr> m...................  PASS! crc is:92e963bd
+<inx,dcx> sp..................  PASS! crc is:d5702fab
+lhld nnnn.....................  PASS! crc is:a9c3d5cb
+shld nnnn.....................  PASS! crc is:e8864f26
+lxi <b,d,h,sp>,nnnn...........  PASS! crc is:fcf46e12
+ldax <b,d>....................  PASS! crc is:2b821d5f
+mvi <b,c,d,e,h,l,m,a>,nn......  PASS! crc is:eaa72044
+mov <bcdehla>,<bcdehla>.......  PASS! crc is:10b58cee
+sta nnnn / lda nnnn...........  PASS! crc is:ed57af72
+<rlc,rrc,ral,rar>.............  PASS! crc is:e0d89235
+stax <b,d>....................  PASS! crc is:2b0471e9
+Tests complete
 ```
 <!-- /8080EXM.COM -->
 
