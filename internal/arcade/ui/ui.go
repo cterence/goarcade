@@ -25,9 +25,12 @@ const (
 	WIDTH      uint16 = 224
 	HEIGHT     uint16 = 256
 	SCALE      uint16 = 3
-)
 
-var palette = [4]uint32{0xFF000000, 0xFFFFFFFF, 0xFF00FF00, 0xFFFF0000}
+	COLOR_BLACK uint32 = 0xFF000000
+	COLOR_WHITE uint32 = 0xFFFFFFFF
+	COLOR_RED   uint32 = 0xFFFF0000
+	COLOR_GREEN uint32 = 0xFF00FF00
+)
 
 func (ui *UI) Init(cancel context.CancelFunc) {
 	ui.cancel = cancel
@@ -84,7 +87,21 @@ func (ui *UI) drawVRAM() {
 			addr := VRAM_START + (x * (HEIGHT / 8)) + ((HEIGHT - y - 1) / 8)
 			pixels := ui.ReadMem(addr)
 			pixel := (pixels >> (7 - y%8)) & 1
-			pixelData[rowStart+int(x)] = palette[pixel]
+
+			color := COLOR_BLACK
+			if pixel == 1 {
+				color = COLOR_WHITE
+
+				if y > 180 {
+					if y < 240 || (x > 16 && x < 128) {
+						color = COLOR_GREEN
+					}
+				} else if y >= 32 && y < 64 {
+					color = COLOR_RED
+				}
+			}
+
+			pixelData[rowStart+int(x)] = color
 		}
 
 		if y == HEIGHT/2 {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
+	"github.com/cterence/space-invaders/internal/arcade/apu"
 	"github.com/cterence/space-invaders/internal/arcade/cpu"
 	"github.com/cterence/space-invaders/internal/arcade/memory"
 	"github.com/cterence/space-invaders/internal/arcade/ui"
@@ -27,12 +28,15 @@ type arcade struct {
 	cpu    *cpu.CPU
 	memory *memory.Memory
 	ui     *ui.UI
+	apu    *apu.APU
 
 	cpuOpts []cpu.Option
 
 	cpm        bool
 	headless   bool
 	unthrottle bool
+	noAudio    bool
+	soundDir   string
 }
 
 type Option func(*arcade)
@@ -55,6 +59,18 @@ func WithHeadless(headless bool) Option {
 	}
 }
 
+func WithSoundDir(soundDir string) Option {
+	return func(a *arcade) {
+		a.soundDir = soundDir
+	}
+}
+
+func WithNoAudio(noAudio bool) Option {
+	return func(a *arcade) {
+		a.noAudio = noAudio
+	}
+}
+
 func WithUnthrottle(unthrottle bool) Option {
 	return func(a *arcade) {
 		a.unthrottle = unthrottle
@@ -69,6 +85,7 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		cpu:    &cpu.CPU{},
 		memory: &memory.Memory{},
 		ui:     &ui.UI{},
+		apu:    &apu.APU{},
 	}
 
 	for _, o := range options {
@@ -91,10 +108,19 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		defer a.ui.Close()
 
 		trapSigInt(cancel)
+
+		if !a.noAudio {
+			a.apu.Init(a.soundDir)
+
+			defer a.apu.Close()
+		}
 	}
 
 	a.cpu.ReadMem = a.memory.Read
 	a.cpu.WriteMem = a.memory.Write
+	a.cpu.PlaySound = a.apu.PlaySound
+	a.cpu.StartSoundLoop = a.apu.StartLoop
+	a.cpu.StopSoundLoop = a.apu.StopLoop
 	a.ui.ReadMem = a.memory.Read
 	a.ui.RequestInterrupt = a.cpu.RequestInterrupt
 	a.ui.SendInput = a.cpu.SendInput

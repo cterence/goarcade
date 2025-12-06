@@ -7,8 +7,11 @@ import (
 )
 
 type CPU struct {
-	ReadMem  func(uint16) uint8
-	WriteMem func(uint16, uint8)
+	ReadMem        func(uint16) uint8
+	WriteMem       func(uint16, uint8)
+	PlaySound      func(uint8)
+	StartSoundLoop func(uint8)
+	StopSoundLoop  func(uint8)
 
 	Running bool
 

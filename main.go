@@ -16,6 +16,8 @@ func main() {
 		cpm        bool
 		headless   bool
 		unthrottle bool
+		noAudio    bool
+		soundDir   string
 	)
 
 	cmd := &cli.Command{
@@ -49,6 +51,19 @@ func main() {
 				Destination: &headless,
 			},
 
+			&cli.StringFlag{
+				Name:        "sound-dir",
+				Aliases:     []string{"s"},
+				Usage:       "directory path for WAV sound files",
+				Destination: &soundDir,
+			},
+
+			&cli.BoolFlag{
+				Name:        "no-audio",
+				Usage:       "run without audio",
+				Destination: &noAudio,
+			},
+
 			&cli.BoolFlag{
 				Name:        "cpm",
 				Usage:       "run in CP/M compatibility mode (for CPU tests)",
@@ -69,6 +84,8 @@ func main() {
 				arcade.WithDebug(debug),
 				arcade.WithCPM(cpm),
 				arcade.WithHeadless(headless),
+				arcade.WithNoAudio(noAudio),
+				arcade.WithSoundDir(soundDir),
 				arcade.WithUnthrottle(unthrottle),
 			)
 		},

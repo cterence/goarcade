@@ -370,11 +370,42 @@ func portOut(c *CPU, _ string) {
 	case 2:
 		c.so = c.a & 0x7
 	case 3:
-		// TODO: sound
+		rising := c.a & ^c.ioPorts[portNumber]
+		falling := c.ioPorts[portNumber] & ^c.a
+
+		switch {
+		case rising&1 == 1:
+			c.StartSoundLoop(0)
+		case falling&1 == 1:
+			c.StopSoundLoop(0)
+		case rising>>1&1 == 1:
+			c.PlaySound(1)
+		case rising>>2&1 == 1:
+			c.PlaySound(2)
+		case rising>>3&1 == 1:
+			c.PlaySound(3)
+		}
+
+		c.ioPorts[portNumber] = c.a
 	case 4:
 		c.sr = uint16(c.a)<<8 | c.sr>>8
 	case 5:
-		// TODO: sound
+		rising := c.a & ^c.ioPorts[portNumber]
+
+		switch {
+		case rising&1 == 1:
+			c.PlaySound(4)
+		case rising>>1&1 == 1:
+			c.PlaySound(5)
+		case rising>>2&1 == 1:
+			c.PlaySound(6)
+		case rising>>3&1 == 1:
+			c.PlaySound(7)
+		case rising>>4&1 == 1:
+			c.PlaySound(8)
+		}
+
+		c.ioPorts[portNumber] = c.a
 	case 6: // NOP for watchdog
 	default:
 		fmt.Printf("unimplemented out port: %02x\n", portNumber)
