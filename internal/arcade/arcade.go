@@ -143,6 +143,11 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 	}
 
 	for _, p := range romPaths {
+		// Must not write ROM to 0x2000 - 0x3FFF
+		if i == 0x2000 {
+			i = 0x4000
+		}
+
 		romBytes, err := os.ReadFile(p)
 		if err != nil {
 			return fmt.Errorf("failed to read rom file: %w", err)
