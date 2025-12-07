@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/cterence/space-invaders/internal/arcade"
+	"github.com/cterence/goarcade/internal/arcade"
 	"github.com/urfave/cli/v3"
 )
 
@@ -22,8 +22,8 @@ func main() {
 	)
 
 	cmd := &cli.Command{
-		Name:      "space-invaders",
-		Usage:     "Space Invaders arcade emulator",
+		Name:      "goarcade",
+		Usage:     "Intel 8080 arcade emulator",
 		ArgsUsage: "[ordered rom part paths]",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -41,7 +41,7 @@ func main() {
 
 			&cli.StringFlag{
 				Name:        "state",
-				Usage:       "save state file to load at startup",
+				Usage:       "save state file",
 				Destination: &saveState,
 			},
 
@@ -101,7 +101,7 @@ func main() {
 			{
 				Name:      "dasm",
 				Aliases:   []string{"d"},
-				Usage:     "disassemble a 8080 rom",
+				Usage:     "disassemble a program",
 				ArgsUsage: "[ordered rom part paths]",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					return arcade.Disassemble(cmd.Args().Slice())

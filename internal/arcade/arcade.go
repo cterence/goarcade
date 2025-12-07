@@ -16,10 +16,10 @@ import (
 	"time"
 
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
-	"github.com/cterence/space-invaders/internal/arcade/apu"
-	"github.com/cterence/space-invaders/internal/arcade/cpu"
-	"github.com/cterence/space-invaders/internal/arcade/memory"
-	"github.com/cterence/space-invaders/internal/arcade/ui"
+	"github.com/cterence/goarcade/internal/arcade/apu"
+	"github.com/cterence/goarcade/internal/arcade/cpu"
+	"github.com/cterence/goarcade/internal/arcade/memory"
+	"github.com/cterence/goarcade/internal/arcade/ui"
 )
 
 const (

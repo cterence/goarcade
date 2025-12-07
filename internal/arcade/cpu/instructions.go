@@ -6,7 +6,7 @@ import (
 	"math/bits"
 	"strconv"
 
-	"github.com/cterence/space-invaders/internal/arcade/lib"
+	"github.com/cterence/goarcade/internal/arcade/lib"
 )
 
 func nop(*CPU, string) {}

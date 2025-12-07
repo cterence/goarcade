@@ -1,4 +1,4 @@
-module github.com/cterence/space-invaders
+module github.com/cterence/goarcade
 
 go 1.25.4
 

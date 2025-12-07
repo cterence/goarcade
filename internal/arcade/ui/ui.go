@@ -61,7 +61,7 @@ func (ui *UI) Init() {
 	}
 
 	if ui.window == nil && ui.renderer == nil {
-		ui.window, ui.renderer, err = sdl.CreateWindowAndRenderer("Space Invaders", int(WIDTH*SCALE), int(HEIGHT*SCALE), sdl.WINDOW_RESIZABLE)
+		ui.window, ui.renderer, err = sdl.CreateWindowAndRenderer("goarcade", int(WIDTH*SCALE), int(HEIGHT*SCALE), sdl.WINDOW_RESIZABLE)
 		if err != nil {
 			panic("failed to create window and renderer: " + err.Error())
 		}
