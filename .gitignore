@@ -35,3 +35,4 @@ roms/
 tmp/
 .direnv/
 space-invaders
+*.bin

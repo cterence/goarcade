@@ -298,7 +298,7 @@ func (a *arcade) SaveState() error {
 		Memory: memory,
 	}
 
-	f, err := os.Create(strings.Join([]string{a.romHash, "bin"}, "."))
+	f, err := os.Create(a.romHash + ".bin")
 	if err != nil {
 		return err
 	}
@@ -310,7 +310,12 @@ func (a *arcade) SaveState() error {
 }
 
 func (a *arcade) LoadState() error {
-	f, err := os.Open(a.saveState)
+	fileName := a.saveState
+	if fileName == "" {
+		fileName = a.romHash + ".bin"
+	}
+
+	f, err := os.Open(fileName)
 	if err != nil {
 		return err
 	}
