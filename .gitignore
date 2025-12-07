@@ -36,3 +36,4 @@ tmp/
 .direnv/
 goarcade
 *.bin
+.pre-commit-config.yaml
