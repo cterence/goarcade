@@ -18,6 +18,7 @@ func main() {
 		unthrottle bool
 		noAudio    bool
 		soundDir   string
+		saveState  string
 	)
 
 	cmd := &cli.Command{
@@ -36,6 +37,12 @@ func main() {
 
 					return nil
 				},
+			},
+
+			&cli.StringFlag{
+				Name:        "state",
+				Usage:       "save state file to load at startup",
+				Destination: &saveState,
 			},
 
 			&cli.BoolFlag{
@@ -87,6 +94,7 @@ func main() {
 				arcade.WithNoAudio(noAudio),
 				arcade.WithSoundDir(soundDir),
 				arcade.WithUnthrottle(unthrottle),
+				arcade.WithSaveState(saveState),
 			)
 		},
 		Commands: []*cli.Command{

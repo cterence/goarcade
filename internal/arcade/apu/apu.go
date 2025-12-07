@@ -75,10 +75,10 @@ func (a *APU) Init(soundDir string) {
 		}
 	}
 
-	a.TogglePause(false)
+	a.TogglePauseAudio(false)
 }
 
-func (a *APU) TogglePause(pause bool) {
+func (a *APU) TogglePauseAudio(pause bool) {
 	if a.streams == nil {
 		return
 	}
@@ -120,7 +120,7 @@ func (a *APU) PlaySound(soundIndex uint8) {
 	}
 }
 
-func (a *APU) StartLoop(soundIndex uint8) {
+func (a *APU) StartSoundLoop(soundIndex uint8) {
 	if len(a.streams) == 0 || a.looping[soundIndex] {
 		return
 	}
@@ -154,7 +154,7 @@ func (a *APU) StartLoop(soundIndex uint8) {
 	}()
 }
 
-func (a *APU) StopLoop(soundIndex uint8) {
+func (a *APU) StopSoundLoop(soundIndex uint8) {
 	if len(a.streams) == 0 || !a.looping[soundIndex] {
 		return
 	}

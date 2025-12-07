@@ -62,7 +62,7 @@ var InstByOpcode = [256]inst{
 	{Name: "INR", Op1: "L", Op2: "", Length: 1, Cycles: 5, exec: inr},                                        // 0x2C
 	{Name: "DCR", Op1: "L", Op2: "", Length: 1, Cycles: 5, exec: dcr},                                        // 0x2D
 	{Name: "MVI", Op1: "L", Op2: "", Length: 2, Cycles: 7, exec: mvi},                                        // 0x2E
-	{Name: "CMA", Op1: "", Op2: "", Length: 1, Cycles: 4, exec: func(c *CPU, _ string) { c.a = 0xFF - c.a }}, // 0x2F
+	{Name: "CMA", Op1: "", Op2: "", Length: 1, Cycles: 4, exec: func(c *CPU, _ string) { c.A = 0xFF - c.A }}, // 0x2F
 
 	// 0x30-0x3F
 	{Name: "NOP", Op1: "", Op2: "", Length: 1, Cycles: 4, exec: nop},                                                  // 0x30 *NOP
@@ -83,76 +83,76 @@ var InstByOpcode = [256]inst{
 	{Name: "CMC", Op1: "", Op2: "", Length: 1, Cycles: 4, exec: func(c *CPU, _ string) { c.setCYF(c.getCYF() == 0) }}, // 0x3F
 
 	// 0x40-0x4F
-	{Name: "MOV", Op1: "B", Op2: "B", Length: 1, Cycles: 5, exec: nop},                                                                      // 0x40
-	{Name: "MOV", Op1: "B", Op2: "C", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.b = c.c }},                                     // 0x41
-	{Name: "MOV", Op1: "B", Op2: "D", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.b = c.d }},                                     // 0x42
-	{Name: "MOV", Op1: "B", Op2: "E", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.b = c.e }},                                     // 0x43
-	{Name: "MOV", Op1: "B", Op2: "H", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.b = c.h }},                                     // 0x44
-	{Name: "MOV", Op1: "B", Op2: "L", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.b = c.l }},                                     // 0x45
-	{Name: "MOV", Op1: "B", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.b = c.ReadMem(uint16(c.h)<<8 | uint16(c.l)) }}, // 0x46
-	{Name: "MOV", Op1: "B", Op2: "A", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.b = c.a }},                                     // 0x47
-	{Name: "MOV", Op1: "C", Op2: "B", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.c = c.b }},                                     // 0x48
-	{Name: "MOV", Op1: "C", Op2: "C", Length: 1, Cycles: 5, exec: nop},                                                                      // 0x49
-	{Name: "MOV", Op1: "C", Op2: "D", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.c = c.d }},                                     // 0x4A
-	{Name: "MOV", Op1: "C", Op2: "E", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.c = c.e }},                                     // 0x4B
-	{Name: "MOV", Op1: "C", Op2: "H", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.c = c.h }},                                     // 0x4C
-	{Name: "MOV", Op1: "C", Op2: "L", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.c = c.l }},                                     // 0x4D
-	{Name: "MOV", Op1: "C", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.c = c.ReadMem(uint16(c.h)<<8 | uint16(c.l)) }}, // 0x4E
-	{Name: "MOV", Op1: "C", Op2: "A", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.c = c.a }},                                     // 0x4F
+	{Name: "MOV", Op1: "B", Op2: "B", Length: 1, Cycles: 5, exec: nop},                                                                       // 0x40
+	{Name: "MOV", Op1: "B", Op2: "C", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.B = c.C }},                                      // 0x41
+	{Name: "MOV", Op1: "B", Op2: "D", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.B = c.D }},                                      // 0x42
+	{Name: "MOV", Op1: "B", Op2: "E", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.B = c.E }},                                      // 0x43
+	{Name: "MOV", Op1: "B", Op2: "H", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.B = c.H }},                                      // 0x44
+	{Name: "MOV", Op1: "B", Op2: "L", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.B = c.L }},                                      // 0x45
+	{Name: "MOV", Op1: "B", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.B = c.Bus.Read(uint16(c.H)<<8 | uint16(c.L)) }}, // 0x46
+	{Name: "MOV", Op1: "B", Op2: "A", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.B = c.A }},                                      // 0x47
+	{Name: "MOV", Op1: "C", Op2: "B", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.C = c.B }},                                      // 0x48
+	{Name: "MOV", Op1: "C", Op2: "C", Length: 1, Cycles: 5, exec: nop},                                                                       // 0x49
+	{Name: "MOV", Op1: "C", Op2: "D", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.C = c.D }},                                      // 0x4A
+	{Name: "MOV", Op1: "C", Op2: "E", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.C = c.E }},                                      // 0x4B
+	{Name: "MOV", Op1: "C", Op2: "H", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.C = c.H }},                                      // 0x4C
+	{Name: "MOV", Op1: "C", Op2: "L", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.C = c.L }},                                      // 0x4D
+	{Name: "MOV", Op1: "C", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.C = c.Bus.Read(uint16(c.H)<<8 | uint16(c.L)) }}, // 0x4E
+	{Name: "MOV", Op1: "C", Op2: "A", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.C = c.A }},                                      // 0x4F
 
 	// 0x50-0x5F
-	{Name: "MOV", Op1: "D", Op2: "B", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.d = c.b }},                                     // 0x50
-	{Name: "MOV", Op1: "D", Op2: "C", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.d = c.c }},                                     // 0x51
-	{Name: "MOV", Op1: "D", Op2: "D", Length: 1, Cycles: 5, exec: nop},                                                                      // 0x52
-	{Name: "MOV", Op1: "D", Op2: "E", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.d = c.e }},                                     // 0x53
-	{Name: "MOV", Op1: "D", Op2: "H", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.d = c.h }},                                     // 0x54
-	{Name: "MOV", Op1: "D", Op2: "L", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.d = c.l }},                                     // 0x55
-	{Name: "MOV", Op1: "D", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.d = c.ReadMem(uint16(c.h)<<8 | uint16(c.l)) }}, // 0x56
-	{Name: "MOV", Op1: "D", Op2: "A", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.d = c.a }},                                     // 0x57
-	{Name: "MOV", Op1: "E", Op2: "B", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.e = c.b }},                                     // 0x58
-	{Name: "MOV", Op1: "E", Op2: "C", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.e = c.c }},                                     // 0x59
-	{Name: "MOV", Op1: "E", Op2: "D", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.e = c.d }},                                     // 0x5A
-	{Name: "MOV", Op1: "E", Op2: "E", Length: 1, Cycles: 5, exec: nop},                                                                      // 0x5B
-	{Name: "MOV", Op1: "E", Op2: "H", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.e = c.h }},                                     // 0x5C
-	{Name: "MOV", Op1: "E", Op2: "L", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.e = c.l }},                                     // 0x5D
-	{Name: "MOV", Op1: "E", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.e = c.ReadMem(uint16(c.h)<<8 | uint16(c.l)) }}, // 0x5E
-	{Name: "MOV", Op1: "E", Op2: "A", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.e = c.a }},                                     // 0x5F
+	{Name: "MOV", Op1: "D", Op2: "B", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.D = c.B }},                                      // 0x50
+	{Name: "MOV", Op1: "D", Op2: "C", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.D = c.C }},                                      // 0x51
+	{Name: "MOV", Op1: "D", Op2: "D", Length: 1, Cycles: 5, exec: nop},                                                                       // 0x52
+	{Name: "MOV", Op1: "D", Op2: "E", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.D = c.E }},                                      // 0x53
+	{Name: "MOV", Op1: "D", Op2: "H", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.D = c.H }},                                      // 0x54
+	{Name: "MOV", Op1: "D", Op2: "L", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.D = c.L }},                                      // 0x55
+	{Name: "MOV", Op1: "D", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.D = c.Bus.Read(uint16(c.H)<<8 | uint16(c.L)) }}, // 0x56
+	{Name: "MOV", Op1: "D", Op2: "A", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.D = c.A }},                                      // 0x57
+	{Name: "MOV", Op1: "E", Op2: "B", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.E = c.B }},                                      // 0x58
+	{Name: "MOV", Op1: "E", Op2: "C", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.E = c.C }},                                      // 0x59
+	{Name: "MOV", Op1: "E", Op2: "D", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.E = c.D }},                                      // 0x5A
+	{Name: "MOV", Op1: "E", Op2: "E", Length: 1, Cycles: 5, exec: nop},                                                                       // 0x5B
+	{Name: "MOV", Op1: "E", Op2: "H", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.E = c.H }},                                      // 0x5C
+	{Name: "MOV", Op1: "E", Op2: "L", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.E = c.L }},                                      // 0x5D
+	{Name: "MOV", Op1: "E", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.E = c.Bus.Read(uint16(c.H)<<8 | uint16(c.L)) }}, // 0x5E
+	{Name: "MOV", Op1: "E", Op2: "A", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.E = c.A }},                                      // 0x5F
 
 	// 0x60-0x6F
-	{Name: "MOV", Op1: "H", Op2: "B", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.h = c.b }},                                     // 0x60
-	{Name: "MOV", Op1: "H", Op2: "C", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.h = c.c }},                                     // 0x61
-	{Name: "MOV", Op1: "H", Op2: "D", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.h = c.d }},                                     // 0x62
-	{Name: "MOV", Op1: "H", Op2: "E", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.h = c.e }},                                     // 0x63
-	{Name: "MOV", Op1: "H", Op2: "H", Length: 1, Cycles: 5, exec: nop},                                                                      // 0x64
-	{Name: "MOV", Op1: "H", Op2: "L", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.h = c.l }},                                     // 0x65
-	{Name: "MOV", Op1: "H", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.h = c.ReadMem(uint16(c.h)<<8 | uint16(c.l)) }}, // 0x66
-	{Name: "MOV", Op1: "H", Op2: "A", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.h = c.a }},                                     // 0x67
-	{Name: "MOV", Op1: "L", Op2: "B", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.l = c.b }},                                     // 0x68
-	{Name: "MOV", Op1: "L", Op2: "C", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.l = c.c }},                                     // 0x69
-	{Name: "MOV", Op1: "L", Op2: "D", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.l = c.d }},                                     // 0x6A
-	{Name: "MOV", Op1: "L", Op2: "E", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.l = c.e }},                                     // 0x6B
-	{Name: "MOV", Op1: "L", Op2: "H", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.l = c.h }},                                     // 0x6C
-	{Name: "MOV", Op1: "L", Op2: "L", Length: 1, Cycles: 5, exec: nop},                                                                      // 0x6D
-	{Name: "MOV", Op1: "L", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.l = c.ReadMem(uint16(c.h)<<8 | uint16(c.l)) }}, // 0x6E
-	{Name: "MOV", Op1: "L", Op2: "A", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.l = c.a }},                                     // 0x6F
+	{Name: "MOV", Op1: "H", Op2: "B", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.H = c.B }},                                      // 0x60
+	{Name: "MOV", Op1: "H", Op2: "C", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.H = c.C }},                                      // 0x61
+	{Name: "MOV", Op1: "H", Op2: "D", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.H = c.D }},                                      // 0x62
+	{Name: "MOV", Op1: "H", Op2: "E", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.H = c.E }},                                      // 0x63
+	{Name: "MOV", Op1: "H", Op2: "H", Length: 1, Cycles: 5, exec: nop},                                                                       // 0x64
+	{Name: "MOV", Op1: "H", Op2: "L", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.H = c.L }},                                      // 0x65
+	{Name: "MOV", Op1: "H", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.H = c.Bus.Read(uint16(c.H)<<8 | uint16(c.L)) }}, // 0x66
+	{Name: "MOV", Op1: "H", Op2: "A", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.H = c.A }},                                      // 0x67
+	{Name: "MOV", Op1: "L", Op2: "B", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.L = c.B }},                                      // 0x68
+	{Name: "MOV", Op1: "L", Op2: "C", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.L = c.C }},                                      // 0x69
+	{Name: "MOV", Op1: "L", Op2: "D", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.L = c.D }},                                      // 0x6A
+	{Name: "MOV", Op1: "L", Op2: "E", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.L = c.E }},                                      // 0x6B
+	{Name: "MOV", Op1: "L", Op2: "H", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.L = c.H }},                                      // 0x6C
+	{Name: "MOV", Op1: "L", Op2: "L", Length: 1, Cycles: 5, exec: nop},                                                                       // 0x6D
+	{Name: "MOV", Op1: "L", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.L = c.Bus.Read(uint16(c.H)<<8 | uint16(c.L)) }}, // 0x6E
+	{Name: "MOV", Op1: "L", Op2: "A", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.L = c.A }},                                      // 0x6F
 
 	// 0x70-0x7F
-	{Name: "MOV", Op1: "M", Op2: "B", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.WriteMem(uint16(c.h)<<8|uint16(c.l), c.b) }},   // 0x70
-	{Name: "MOV", Op1: "M", Op2: "C", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.WriteMem(uint16(c.h)<<8|uint16(c.l), c.c) }},   // 0x71
-	{Name: "MOV", Op1: "M", Op2: "D", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.WriteMem(uint16(c.h)<<8|uint16(c.l), c.d) }},   // 0x72
-	{Name: "MOV", Op1: "M", Op2: "E", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.WriteMem(uint16(c.h)<<8|uint16(c.l), c.e) }},   // 0x73
-	{Name: "MOV", Op1: "M", Op2: "H", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.WriteMem(uint16(c.h)<<8|uint16(c.l), c.h) }},   // 0x74
-	{Name: "MOV", Op1: "M", Op2: "L", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.WriteMem(uint16(c.h)<<8|uint16(c.l), c.l) }},   // 0x75
-	{Name: "HLT", Op1: "", Op2: "", Length: 1, Cycles: 7, exec: hlt},                                                                        // 0x76
-	{Name: "MOV", Op1: "M", Op2: "A", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.WriteMem(uint16(c.h)<<8|uint16(c.l), c.a) }},   // 0x77
-	{Name: "MOV", Op1: "A", Op2: "B", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.a = c.b }},                                     // 0x78
-	{Name: "MOV", Op1: "A", Op2: "C", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.a = c.c }},                                     // 0x79
-	{Name: "MOV", Op1: "A", Op2: "D", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.a = c.d }},                                     // 0x7A
-	{Name: "MOV", Op1: "A", Op2: "E", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.a = c.e }},                                     // 0x7B
-	{Name: "MOV", Op1: "A", Op2: "H", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.a = c.h }},                                     // 0x7C
-	{Name: "MOV", Op1: "A", Op2: "L", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.a = c.l }},                                     // 0x7D
-	{Name: "MOV", Op1: "A", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.a = c.ReadMem(uint16(c.h)<<8 | uint16(c.l)) }}, // 0x7E
-	{Name: "MOV", Op1: "A", Op2: "A", Length: 1, Cycles: 5, exec: nop},                                                                      // 0x7F
+	{Name: "MOV", Op1: "M", Op2: "B", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.Bus.Write(uint16(c.H)<<8|uint16(c.L), c.B) }},   // 0x70
+	{Name: "MOV", Op1: "M", Op2: "C", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.Bus.Write(uint16(c.H)<<8|uint16(c.L), c.C) }},   // 0x71
+	{Name: "MOV", Op1: "M", Op2: "D", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.Bus.Write(uint16(c.H)<<8|uint16(c.L), c.D) }},   // 0x72
+	{Name: "MOV", Op1: "M", Op2: "E", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.Bus.Write(uint16(c.H)<<8|uint16(c.L), c.E) }},   // 0x73
+	{Name: "MOV", Op1: "M", Op2: "H", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.Bus.Write(uint16(c.H)<<8|uint16(c.L), c.H) }},   // 0x74
+	{Name: "MOV", Op1: "M", Op2: "L", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.Bus.Write(uint16(c.H)<<8|uint16(c.L), c.L) }},   // 0x75
+	{Name: "HLT", Op1: "", Op2: "", Length: 1, Cycles: 7, exec: hlt},                                                                         // 0x76
+	{Name: "MOV", Op1: "M", Op2: "A", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.Bus.Write(uint16(c.H)<<8|uint16(c.L), c.A) }},   // 0x77
+	{Name: "MOV", Op1: "A", Op2: "B", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.A = c.B }},                                      // 0x78
+	{Name: "MOV", Op1: "A", Op2: "C", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.A = c.C }},                                      // 0x79
+	{Name: "MOV", Op1: "A", Op2: "D", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.A = c.D }},                                      // 0x7A
+	{Name: "MOV", Op1: "A", Op2: "E", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.A = c.E }},                                      // 0x7B
+	{Name: "MOV", Op1: "A", Op2: "H", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.A = c.H }},                                      // 0x7C
+	{Name: "MOV", Op1: "A", Op2: "L", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.A = c.L }},                                      // 0x7D
+	{Name: "MOV", Op1: "A", Op2: "M", Length: 1, Cycles: 7, exec: func(c *CPU, _ string) { c.A = c.Bus.Read(uint16(c.H)<<8 | uint16(c.L)) }}, // 0x7E
+	{Name: "MOV", Op1: "A", Op2: "A", Length: 1, Cycles: 5, exec: nop},                                                                       // 0x7F
 
 	// 0x80-0x8F
 	{Name: "ADD", Op1: "B", Op2: "", Length: 1, Cycles: 4, exec: add}, // 0x80
@@ -272,9 +272,9 @@ var InstByOpcode = [256]inst{
 	{Name: "ANI", Op1: "", Op2: "", Length: 2, Cycles: 7, exec: ani},                                                                 // 0xE6
 	{Name: "RST", Op1: "4", Op2: "", Length: 1, Cycles: 11, exec: rst},                                                               // 0xE7
 	{Name: "RPE", Op1: "", Op2: "", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.retCond(c.getPF() == 1) }},                // 0xE8 (11 if taken)
-	{Name: "PCHL", Op1: "", Op2: "", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.pc = uint16(c.h)<<8 | uint16(c.l) }},     // 0xE9
+	{Name: "PCHL", Op1: "", Op2: "", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.PC = uint16(c.H)<<8 | uint16(c.L) }},     // 0xE9
 	{Name: "JPE", Op1: "", Op2: "", Length: 3, Cycles: 10, exec: func(c *CPU, _ string) { c.jumpCond(c.getPF() == 1) }},              // 0xEA
-	{Name: "XCHG", Op1: "", Op2: "", Length: 1, Cycles: 4, exec: func(c *CPU, _ string) { c.h, c.l, c.d, c.e = c.d, c.e, c.h, c.l }}, // 0xEB
+	{Name: "XCHG", Op1: "", Op2: "", Length: 1, Cycles: 4, exec: func(c *CPU, _ string) { c.H, c.L, c.D, c.E = c.D, c.E, c.H, c.L }}, // 0xEB
 	{Name: "CPE", Op1: "", Op2: "", Length: 3, Cycles: 11, exec: func(c *CPU, _ string) { c.callCond(c.getPF() == 1) }},              // 0xEC (17 if taken)
 	{Name: "CALL", Op1: "", Op2: "", Length: 3, Cycles: 17, exec: func(c *CPU, _ string) { c.call() }},                               // 0callxED *CALL
 	{Name: "XRI", Op1: "", Op2: "", Length: 2, Cycles: 7, exec: xri},                                                                 // 0xEE
@@ -284,15 +284,15 @@ var InstByOpcode = [256]inst{
 	{Name: "RP", Op1: "", Op2: "", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.retCond(c.getSF() == 0) }},             // 0xF0 (11 if taken)
 	{Name: "POP", Op1: "AF", Op2: "", Length: 1, Cycles: 10, exec: popOp},                                                        // 0xF1
 	{Name: "JP", Op1: "", Op2: "", Length: 3, Cycles: 10, exec: func(c *CPU, _ string) { c.jumpCond(c.getSF() == 0) }},           // 0xF2
-	{Name: "DI", Op1: "", Op2: "", Length: 1, Cycles: 4, exec: func(c *CPU, _ string) { c.interrupts = false }},                  // 0xF3
+	{Name: "DI", Op1: "", Op2: "", Length: 1, Cycles: 4, exec: func(c *CPU, _ string) { c.Interrupts = false }},                  // 0xF3
 	{Name: "CP", Op1: "", Op2: "", Length: 3, Cycles: 11, exec: func(c *CPU, _ string) { c.callCond(c.getSF() == 0) }},           // 0xF4 (17 if taken)
 	{Name: "PUSH", Op1: "AF", Op2: "", Length: 1, Cycles: 11, exec: pushOp},                                                      // 0xF5
 	{Name: "ORI", Op1: "", Op2: "", Length: 2, Cycles: 7, exec: ori},                                                             // 0xF6
 	{Name: "RST", Op1: "6", Op2: "", Length: 1, Cycles: 11, exec: rst},                                                           // 0xF7
 	{Name: "RM", Op1: "", Op2: "", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.retCond(c.getSF() == 1) }},             // 0xF8 (11 if taken)
-	{Name: "SPHL", Op1: "", Op2: "", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.sp = uint16(c.h)<<8 | uint16(c.l) }}, // 0xF9
+	{Name: "SPHL", Op1: "", Op2: "", Length: 1, Cycles: 5, exec: func(c *CPU, _ string) { c.SP = uint16(c.H)<<8 | uint16(c.L) }}, // 0xF9
 	{Name: "JM", Op1: "", Op2: "", Length: 3, Cycles: 10, exec: func(c *CPU, _ string) { c.jumpCond(c.getSF() == 1) }},           // 0xFA
-	{Name: "EI", Op1: "", Op2: "", Length: 1, Cycles: 4, exec: func(c *CPU, _ string) { c.interrupts = true }},                   // 0xFB
+	{Name: "EI", Op1: "", Op2: "", Length: 1, Cycles: 4, exec: func(c *CPU, _ string) { c.Interrupts = true }},                   // 0xFB
 	{Name: "CM", Op1: "", Op2: "", Length: 3, Cycles: 11, exec: func(c *CPU, _ string) { c.callCond(c.getSF() == 1) }},           // 0xFC (17 if taken)
 	{Name: "CALL", Op1: "", Op2: "", Length: 3, Cycles: 17, exec: func(c *CPU, _ string) { c.call() }},                           // 0xFD *CALL
 	{Name: "CPI", Op1: "", Op2: "", Length: 2, Cycles: 7, exec: cpi},                                                             // 0xFE

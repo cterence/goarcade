@@ -1,76 +1,89 @@
 package cpu
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"strconv"
 	"strings"
 )
 
+type bus interface {
+	Read(addr uint16) uint8
+	Write(addr uint16, value uint8)
+}
+
+type apu interface {
+	PlaySound(id uint8)
+	StartSoundLoop(id uint8)
+	StopSoundLoop(id uint8)
+}
+
 type CPU struct {
-	ReadMem        func(uint16) uint8
-	WriteMem       func(uint16, uint8)
-	PlaySound      func(uint8)
-	StartSoundLoop func(uint8)
-	StopSoundLoop  func(uint8)
+	state
 
+	Bus     bus
+	APU     apu
 	Running bool
+}
 
-	debug bool
+type state struct {
+	Debug bool
 
 	// Cycle counter
-	cyc uint64
+	Cyc uint64
 	// Program counter
-	pc uint16
+	PC uint16
 	// Stack pointer
-	sp uint16
+	SP uint16
 
 	// Shift register
-	sr uint16
+	SR uint16
 	// Shift offset
-	so uint8
+	SO uint8
 
 	// Registers
-	a uint8
-	f uint8
-	b uint8
-	c uint8
-	d uint8
-	e uint8
-	h uint8
-	l uint8
+	A uint8
+	F uint8
+	B uint8
+	C uint8
+	D uint8
+	E uint8
+	H uint8
+	L uint8
 
 	// Interrupt switch
-	interrupts bool
+	Interrupts bool
 
 	// IO ports
-	ioPorts [8]uint8
+	IOPorts [8]uint8
 }
 
 type Option func(*CPU)
 
 func WithDebug(debug bool) Option {
 	return func(c *CPU) {
-		c.debug = debug
+		c.Debug = debug
 	}
 }
 
 func (c *CPU) Init(pc uint16, options ...Option) {
 	c.Running = true
-	c.pc = pc
-	c.sp = 0
-	c.sr = 0
-	c.cyc = 0
-	c.so = 0
-	c.b = 0
-	c.c = 0
-	c.d = 0
-	c.e = 0
-	c.h = 0
-	c.l = 0
-	c.a = 0
-	c.f = 2
-	c.interrupts = false
-	c.ioPorts = [8]uint8{}
+	c.PC = pc
+	c.SP = 0
+	c.SR = 0
+	c.Cyc = 0
+	c.SO = 0
+	c.B = 0
+	c.C = 0
+	c.D = 0
+	c.E = 0
+	c.H = 0
+	c.L = 0
+	c.A = 0
+	c.F = 2
+	c.Interrupts = false
+	c.IOPorts = [8]uint8{}
 
 	for _, o := range options {
 		o(c)
@@ -80,49 +93,84 @@ func (c *CPU) Init(pc uint16, options ...Option) {
 func (c *CPU) String() string {
 	var b strings.Builder
 
-	b.WriteString("PC: " + fmt.Sprintf("%04X", c.pc))
-	b.WriteString(", AF: " + fmt.Sprintf("%04X", uint16(c.a)<<8|uint16(c.f)))
-	b.WriteString(", BC: " + fmt.Sprintf("%04X", uint16(c.b)<<8|uint16(c.c)))
-	b.WriteString(", DE: " + fmt.Sprintf("%04X", uint16(c.d)<<8|uint16(c.e)))
-	b.WriteString(", HL: " + fmt.Sprintf("%04X", uint16(c.h)<<8|uint16(c.l)))
-	b.WriteString(", SP: " + fmt.Sprintf("%04X", c.sp))
-	b.WriteString(", CYC: " + strconv.FormatUint(c.cyc, 10))
+	b.WriteString("PC: " + fmt.Sprintf("%04X", c.PC))
+	b.WriteString(", AF: " + fmt.Sprintf("%04X", uint16(c.A)<<8|uint16(c.F)))
+	b.WriteString(", BC: " + fmt.Sprintf("%04X", uint16(c.B)<<8|uint16(c.C)))
+	b.WriteString(", DE: " + fmt.Sprintf("%04X", uint16(c.D)<<8|uint16(c.E)))
+	b.WriteString(", HL: " + fmt.Sprintf("%04X", uint16(c.H)<<8|uint16(c.L)))
+	b.WriteString(", SP: " + fmt.Sprintf("%04X", c.SP))
+	b.WriteString(", CYC: " + strconv.FormatUint(c.Cyc, 10))
 
 	return b.String()
 }
 
 func (c *CPU) Step() uint8 {
-	prevPC := c.pc
+	prevPC := c.PC
 
-	inst := InstByOpcode[c.ReadMem(c.pc)]
+	inst := InstByOpcode[c.Bus.Read(c.PC)]
 
-	if c.debug {
-		fmt.Printf("%s (%02X %02X %02X %02X) %-13s\n", c, c.ReadMem(c.pc), c.ReadMem(c.pc+1), c.ReadMem(c.pc+2), c.ReadMem(c.pc+3), inst.Name+" "+inst.Op1+" "+inst.Op2)
-		// fmt.Printf("%s (%02X %02X %02X %02X)\n", c, c.ReadMem(c.pc), c.ReadMem(c.pc+1), c.ReadMem(c.pc+2), c.ReadMem(c.pc+3))
+	if c.Debug {
+		fmt.Printf("%s (%02X %02X %02X %02X) %-13s\n", c, c.Bus.Read(c.PC), c.Bus.Read(c.PC+1), c.Bus.Read(c.PC+2), c.Bus.Read(c.PC+3), inst.Name+" "+inst.Op1+" "+inst.Op2)
+		// fmt.Printf("%s (%02X %02X %02X %02X)\n", c, c.Bus.Read(c.pc), c.Bus.Read(c.pc+1), c.Bus.Read(c.pc+2), c.Bus.Read(c.pc+3))
 	}
 
 	inst.exec(c, inst.Op1)
 
-	if prevPC == c.pc {
-		c.pc += uint16(inst.Length)
+	if prevPC == c.PC {
+		c.PC += uint16(inst.Length)
 	}
 
-	c.cyc += uint64(inst.Cycles)
+	c.Cyc += uint64(inst.Cycles)
 
 	return inst.Cycles
 }
 
 func (c *CPU) RequestInterrupt(num uint8) {
-	if c.interrupts {
-		c.push(c.pc)
-		c.pc = uint16(8 * num)
+	if c.Interrupts {
+		c.push(c.PC)
+		c.PC = uint16(8 * num)
 	}
 }
 
 func (c *CPU) SendInput(port, bit uint8, value bool) {
 	if value {
-		c.ioPorts[port] |= 1 << bit
+		c.IOPorts[port] |= 1 << bit
 	} else {
-		c.ioPorts[port] &= ^(1 << bit)
+		c.IOPorts[port] &= ^(1 << bit)
 	}
+}
+
+func (c *CPU) SaveState() ([]uint8, error) {
+	var buf bytes.Buffer
+
+	enc := gob.NewEncoder(&buf)
+
+	err := enc.Encode(c.state)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode state: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+func (c *CPU) LoadState(stateBytes []uint8) error {
+	var buf bytes.Buffer
+
+	_, err := buf.Write(stateBytes)
+	if err != nil {
+		return fmt.Errorf("failed to load state in buffer: %w", err)
+	}
+
+	enc := gob.NewDecoder(&buf)
+
+	var s state
+
+	err = enc.Decode(&s)
+	if err != nil {
+		return fmt.Errorf("failed to decode state: %w", err)
+	}
+
+	c.state = s
+
+	return nil
 }

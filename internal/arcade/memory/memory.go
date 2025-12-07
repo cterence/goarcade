@@ -5,6 +5,10 @@ const (
 )
 
 type Memory struct {
+	state
+}
+
+type state struct {
 	memory [MEMORY_SIZE]uint8
 }
 

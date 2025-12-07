@@ -2,11 +2,15 @@ package arcade
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/gob"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -29,6 +33,7 @@ type arcade struct {
 	memory *memory.Memory
 	ui     *ui.UI
 	apu    *apu.APU
+	cancel context.CancelFunc
 
 	cpuOpts []cpu.Option
 
@@ -37,6 +42,9 @@ type arcade struct {
 	unthrottle bool
 	noAudio    bool
 	soundDir   string
+	saveState  string
+
+	romHash string
 }
 
 type Option func(*arcade)
@@ -77,7 +85,13 @@ func WithUnthrottle(unthrottle bool) Option {
 	}
 }
 
-func (a *arcade) Init() {
+func WithSaveState(saveState string) Option {
+	return func(a *arcade) {
+		a.saveState = saveState
+	}
+}
+
+func (a *arcade) Reset() {
 	cpuPC := uint16(0)
 
 	if a.cpm {
@@ -100,23 +114,21 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 	defer cancel()
 
 	a := arcade{
-		cpu:    &cpu.CPU{},
-		memory: &memory.Memory{},
-		ui:     &ui.UI{},
-		apu:    &apu.APU{},
+		cpu:     &cpu.CPU{},
+		memory:  &memory.Memory{},
+		ui:      &ui.UI{},
+		apu:     &apu.APU{},
+		cancel:  cancel,
+		romHash: romHash(romPaths)[:8],
 	}
 
-	a.cpu.ReadMem = a.memory.Read
-	a.cpu.WriteMem = a.memory.Write
-	a.cpu.PlaySound = a.apu.PlaySound
-	a.cpu.StartSoundLoop = a.apu.StartLoop
-	a.cpu.StopSoundLoop = a.apu.StopLoop
-	a.ui.ReadMem = a.memory.Read
-	a.ui.RequestInterrupt = a.cpu.RequestInterrupt
-	a.ui.SendInput = a.cpu.SendInput
-	a.ui.Reset = a.Init
-	a.ui.Cancel = cancel
-	a.ui.TogglePauseAudio = a.apu.TogglePause
+	a.cpu.Bus = a.memory
+	a.cpu.APU = a.apu
+
+	a.ui.Arcade = &a
+	a.ui.Bus = a.memory
+	a.ui.CPU = a.cpu
+	a.ui.APU = a.apu
 
 	for _, o := range options {
 		o(&a)
@@ -134,7 +146,7 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		trapSigInt(cancel)
 	}
 
-	a.Init()
+	a.Reset()
 
 	i := 0
 
@@ -168,6 +180,12 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		a.memory.Write(0x0005, 0xD3)
 		a.memory.Write(0x0006, 0x01)
 		a.memory.Write(0x0007, 0xC9)
+	}
+
+	if a.saveState != "" {
+		if err := a.LoadState(); err != nil {
+			return err
+		}
 	}
 
 	cpuCycles := uint64(0)
@@ -229,10 +247,6 @@ func Disassemble(romPaths []string) error {
 
 	var i uint16
 
-	c := cpu.CPU{}
-	c.Init(0)
-	c.ReadMem = func(_ uint16) uint8 { return romBytes[i] }
-
 	for i < uint16(len(romBytes)) {
 		inst := cpu.InstByOpcode[romBytes[i]]
 
@@ -262,6 +276,66 @@ func Disassemble(romPaths []string) error {
 	return nil
 }
 
+type state struct {
+	CPU    []uint8
+	Memory []uint8
+}
+
+func (a *arcade) SaveState() error {
+	cpu, err := a.cpu.SaveState()
+	if err != nil {
+		return err
+	}
+
+	memory := make([]uint8, 0x10000)
+
+	for addr := range memory {
+		memory[addr] = a.memory.Read(uint16(addr))
+	}
+
+	s := state{
+		CPU:    cpu,
+		Memory: memory,
+	}
+
+	f, err := os.Create(strings.Join([]string{a.romHash, "bin"}, "."))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	enc := gob.NewEncoder(f)
+
+	return enc.Encode(s)
+}
+
+func (a *arcade) LoadState() error {
+	f, err := os.Open(a.saveState)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	var s state
+
+	dec := gob.NewDecoder(f)
+	dec.Decode(&s)
+
+	if err := a.cpu.LoadState(s.CPU); err != nil {
+		return fmt.Errorf("failed to load CPU state: %w", err)
+	}
+
+	for addr, b := range s.Memory {
+		a.memory.Write(uint16(addr), b)
+	}
+
+	return nil
+}
+
+func (a *arcade) Shutdown() {
+	a.cancel()
+}
+
 func trapSigInt(cancel context.CancelFunc) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -270,4 +344,14 @@ func trapSigInt(cancel context.CancelFunc) {
 		<-c
 		cancel()
 	}()
+}
+
+func romHash(romPaths []string) string {
+	h := sha256.New()
+
+	for _, f := range romPaths {
+		h.Write([]uint8(filepath.Base(f)))
+	}
+
+	return hex.EncodeToString(h.Sum(nil))
 }

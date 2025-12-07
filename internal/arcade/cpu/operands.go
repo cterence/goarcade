@@ -2,86 +2,86 @@ package cpu
 
 // Flag getters.
 func (c *CPU) getSF() uint8 {
-	return c.f >> 7 & 1
+	return c.F >> 7 & 1
 }
 
 func (c *CPU) getZF() uint8 {
-	return c.f >> 6 & 1
+	return c.F >> 6 & 1
 }
 
 func (c *CPU) getACF() uint8 {
-	return c.f >> 4 & 1
+	return c.F >> 4 & 1
 }
 
 func (c *CPU) getPF() uint8 {
-	return c.f >> 2 & 1
+	return c.F >> 2 & 1
 }
 
 func (c *CPU) getCYF() uint8 {
-	return c.f & 1
+	return c.F & 1
 }
 
 // Flag setters.
 func (c *CPU) setSF(b bool) {
 	if b {
-		c.f = c.f | 0x80
+		c.F = c.F | 0x80
 	} else {
-		c.f = c.f & 0x7F
+		c.F = c.F & 0x7F
 	}
 }
 
 func (c *CPU) setZF(b bool) {
 	if b {
-		c.f = c.f | 0x40
+		c.F = c.F | 0x40
 	} else {
-		c.f = c.f & 0xBF
+		c.F = c.F & 0xBF
 	}
 }
 
 func (c *CPU) setACF(b bool) {
 	if b {
-		c.f = c.f | 0x10
+		c.F = c.F | 0x10
 	} else {
-		c.f = c.f & 0xEF
+		c.F = c.F & 0xEF
 	}
 }
 
 func (c *CPU) setPF(b bool) {
 	if b {
-		c.f = c.f | 0x04
+		c.F = c.F | 0x04
 	} else {
-		c.f = c.f & 0xFB
+		c.F = c.F & 0xFB
 	}
 }
 
 func (c *CPU) setCYF(b bool) {
 	if b {
-		c.f = c.f | 0x01
+		c.F = c.F | 0x01
 	} else {
-		c.f = c.f & 0xFE
+		c.F = c.F & 0xFE
 	}
 }
 
 func (c *CPU) getOp(op string) uint8 {
 	switch op {
 	case "A":
-		return c.a
+		return c.A
 	case "F":
-		return c.f
+		return c.F
 	case "B":
-		return c.b
+		return c.B
 	case "C":
-		return c.c
+		return c.C
 	case "D":
-		return c.d
+		return c.D
 	case "E":
-		return c.e
+		return c.E
 	case "H":
-		return c.h
+		return c.H
 	case "L":
-		return c.l
+		return c.L
 	case "M":
-		return c.ReadMem(uint16(c.h)<<8 | uint16(c.l))
+		return c.Bus.Read(uint16(c.H)<<8 | uint16(c.L))
 	default:
 		panic("unsupported operand: " + op)
 	}
@@ -90,23 +90,23 @@ func (c *CPU) getOp(op string) uint8 {
 func (c *CPU) setOp(op string, v uint8) {
 	switch op {
 	case "A":
-		c.a = v
+		c.A = v
 	case "F":
-		c.f = v
+		c.F = v
 	case "B":
-		c.b = v
+		c.B = v
 	case "C":
-		c.c = v
+		c.C = v
 	case "D":
-		c.d = v
+		c.D = v
 	case "E":
-		c.e = v
+		c.E = v
 	case "H":
-		c.h = v
+		c.H = v
 	case "L":
-		c.l = v
+		c.L = v
 	case "M":
-		c.WriteMem(uint16(c.h)<<8|uint16(c.l), v)
+		c.Bus.Write(uint16(c.H)<<8|uint16(c.L), v)
 	default:
 		panic("unsupported operand: " + op)
 	}
@@ -115,15 +115,15 @@ func (c *CPU) setOp(op string, v uint8) {
 func (c *CPU) getDoubleOp(op string) uint16 {
 	switch op {
 	case "AF":
-		return uint16(c.a)<<8 | uint16(c.f)
+		return uint16(c.A)<<8 | uint16(c.F)
 	case "BC":
-		return uint16(c.b)<<8 | uint16(c.c)
+		return uint16(c.B)<<8 | uint16(c.C)
 	case "DE":
-		return uint16(c.d)<<8 | uint16(c.e)
+		return uint16(c.D)<<8 | uint16(c.E)
 	case "HL":
-		return uint16(c.h)<<8 | uint16(c.l)
+		return uint16(c.H)<<8 | uint16(c.L)
 	case "SP":
-		return c.sp
+		return c.SP
 	default:
 		panic("unsupported operand: " + op)
 	}
@@ -132,19 +132,19 @@ func (c *CPU) getDoubleOp(op string) uint16 {
 func (c *CPU) setDoubleOp(op string, v uint16) {
 	switch op {
 	case "AF":
-		c.a = uint8(v >> 8)
-		c.f = uint8(v)&0xD7 | 0x02
+		c.A = uint8(v >> 8)
+		c.F = uint8(v)&0xD7 | 0x02
 	case "BC":
-		c.b = uint8(v >> 8)
-		c.c = uint8(v)
+		c.B = uint8(v >> 8)
+		c.C = uint8(v)
 	case "DE":
-		c.d = uint8(v >> 8)
-		c.e = uint8(v)
+		c.D = uint8(v >> 8)
+		c.E = uint8(v)
 	case "HL":
-		c.h = uint8(v >> 8)
-		c.l = uint8(v)
+		c.H = uint8(v >> 8)
+		c.L = uint8(v)
 	case "SP":
-		c.sp = v
+		c.SP = v
 	default:
 		panic("unsupported operand: " + op)
 	}

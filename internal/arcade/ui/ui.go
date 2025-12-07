@@ -1,20 +1,37 @@
 package ui
 
 import (
-	"context"
+	"fmt"
 	"unsafe"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-type UI struct {
-	ReadMem          func(uint16) uint8
-	RequestInterrupt func(uint8)
-	SendInput        func(uint8, uint8, bool)
-	Reset            func()
-	TogglePauseAudio func(bool)
-	Cancel           context.CancelFunc
+type bus interface {
+	Read(addr uint16) uint8
+}
 
+type cpu interface {
+	RequestInterrupt(id uint8)
+	SendInput(port uint8, bit uint8, value bool)
+}
+
+type apu interface {
+	TogglePauseAudio(paused bool)
+}
+
+type arcade interface {
+	Reset()
+	SaveState() error
+	LoadState() error
+	Shutdown()
+}
+
+type UI struct {
+	Arcade arcade
+	Bus    bus
+	CPU    cpu
+	APU    apu
 	Paused bool
 
 	window   *sdl.Window
@@ -88,7 +105,7 @@ func (ui *UI) drawVRAM() {
 		rowStart := int(y) * pitch
 		for x := range WIDTH {
 			addr := VRAM_START + (x * (HEIGHT / 8)) + ((HEIGHT - y - 1) / 8)
-			pixels := ui.ReadMem(addr)
+			pixels := ui.Bus.Read(addr)
 			pixel := (pixels >> (7 - y%8)) & 1
 
 			color := COLOR_BLACK
@@ -108,11 +125,11 @@ func (ui *UI) drawVRAM() {
 		}
 
 		if y == HEIGHT/2 && !ui.Paused {
-			ui.RequestInterrupt(1)
+			ui.CPU.RequestInterrupt(1)
 		}
 
 		if y == HEIGHT-1 && !ui.Paused {
-			ui.RequestInterrupt(2)
+			ui.CPU.RequestInterrupt(2)
 		}
 	}
 
@@ -139,45 +156,59 @@ func (ui *UI) handleEvents() {
 	for sdl.PollEvent(&event) {
 		switch event.Type {
 		case sdl.EVENT_QUIT, sdl.EVENT_WINDOW_DESTROYED:
-			ui.Cancel()
+			ui.Arcade.Shutdown()
 
 		case sdl.EVENT_KEY_DOWN, sdl.EVENT_KEY_UP:
 			pressed := event.Type == sdl.EVENT_KEY_DOWN
 
 			switch event.KeyboardEvent().Key {
-			case sdl.K_R:
+			case sdl.K_R: // Reset
 				if !pressed {
-					ui.Reset()
+					ui.Arcade.Reset()
 				}
-			case sdl.K_P:
+			case sdl.K_P: // Pause
 				if !pressed {
 					ui.Paused = !ui.Paused
-					ui.TogglePauseAudio(ui.Paused)
+					ui.APU.TogglePauseAudio(ui.Paused)
+				}
+			case sdl.K_9:
+				if !pressed {
+					err := ui.Arcade.LoadState()
+					if err != nil {
+						fmt.Println("failed to save state:", err.Error())
+					}
+				}
+			case sdl.K_0:
+				if !pressed {
+					err := ui.Arcade.SaveState()
+					if err != nil {
+						fmt.Println("failed to save state:", err.Error())
+					}
 				}
 
 			// Menu
 			case sdl.K_C: // Add coin
-				ui.SendInput(1, 0, pressed)
+				ui.CPU.SendInput(1, 0, pressed)
 			case sdl.K_1: // Select 1 player
-				ui.SendInput(1, 2, pressed)
+				ui.CPU.SendInput(1, 2, pressed)
 			case sdl.K_2: // Select 2 players
-				ui.SendInput(1, 1, pressed)
+				ui.CPU.SendInput(1, 1, pressed)
 
 			// P1 controls
 			case sdl.K_A: // Left
-				ui.SendInput(1, 5, pressed)
+				ui.CPU.SendInput(1, 5, pressed)
 			case sdl.K_D: // Right
-				ui.SendInput(1, 6, pressed)
+				ui.CPU.SendInput(1, 6, pressed)
 			case sdl.K_W: // Shoot
-				ui.SendInput(1, 4, pressed)
+				ui.CPU.SendInput(1, 4, pressed)
 
 			// P2 controls
 			case sdl.K_LEFT: // Left
-				ui.SendInput(2, 5, pressed)
+				ui.CPU.SendInput(2, 5, pressed)
 			case sdl.K_RIGHT: // Right
-				ui.SendInput(2, 6, pressed)
+				ui.CPU.SendInput(2, 6, pressed)
 			case sdl.K_UP: // Shoot
-				ui.SendInput(2, 4, pressed)
+				ui.CPU.SendInput(2, 4, pressed)
 			}
 		}
 	}
