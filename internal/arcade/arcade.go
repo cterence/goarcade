@@ -3,9 +3,7 @@ package arcade
 import (
 	"archive/zip"
 	"context"
-	"crypto/sha256"
 	"encoding/gob"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -49,7 +47,7 @@ type arcade struct {
 	soundDir   string
 	saveState  string
 
-	romHash string
+	romPath string
 }
 
 type Option func(*arcade)
@@ -110,7 +108,7 @@ func Run(ctx context.Context, romPath string, options ...Option) error {
 		ui:      &ui.UI{},
 		apu:     &apu.APU{},
 		cancel:  cancel,
-		romHash: romHash(romPath)[:8],
+		romPath: romPath,
 	}
 
 	a.cpu.Bus = a.memory
@@ -361,7 +359,10 @@ func (a *arcade) SaveState() error {
 		Memory: memory,
 	}
 
-	f, err := os.Create(a.romHash + ".bin")
+	romDir, romFileName := filepath.Split(a.romPath)
+	stateFilePath := filepath.Join(romDir, strings.ReplaceAll(romFileName, filepath.Ext(romFileName), ".state"))
+
+	f, err := os.Create(stateFilePath)
 	if err != nil {
 		return err
 	}
@@ -369,16 +370,23 @@ func (a *arcade) SaveState() error {
 
 	enc := gob.NewEncoder(f)
 
-	return enc.Encode(s)
+	if err := enc.Encode(s); err != nil {
+		return err
+	}
+
+	fmt.Println("saved state file: " + stateFilePath)
+
+	return nil
 }
 
 func (a *arcade) LoadState() error {
-	fileName := a.saveState
-	if fileName == "" {
-		fileName = a.romHash + ".bin"
+	stateFilePath := a.saveState
+	if stateFilePath == "" {
+		romDir, romFileName := filepath.Split(a.romPath)
+		stateFilePath = filepath.Join(romDir, strings.ReplaceAll(romFileName, filepath.Ext(romFileName), ".state"))
 	}
 
-	f, err := os.Open(fileName)
+	f, err := os.Open(stateFilePath)
 	if err != nil {
 		return err
 	}
@@ -397,6 +405,8 @@ func (a *arcade) LoadState() error {
 		a.memory.Write(uint16(addr), b)
 	}
 
+	fmt.Println("loaded state file: " + stateFilePath)
+
 	return nil
 }
 
@@ -412,12 +422,4 @@ func trapSigInt(cancel context.CancelFunc) {
 		<-c
 		cancel()
 	}()
-}
-
-func romHash(romPath string) string {
-	h := sha256.New()
-
-	h.Write([]uint8(filepath.Base(romPath)))
-
-	return hex.EncodeToString(h.Sum(nil))
 }

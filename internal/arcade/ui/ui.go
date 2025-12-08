@@ -170,6 +170,12 @@ func (ui *UI) handleEvents() {
 				if !pressed {
 					ui.Paused = !ui.Paused
 					ui.APU.TogglePauseAudio(ui.Paused)
+
+					if ui.Paused {
+						fmt.Println("arcade paused")
+					} else {
+						fmt.Println("arcade resumed")
+					}
 				}
 			case sdl.K_9:
 				if !pressed {
