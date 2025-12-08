@@ -81,8 +81,7 @@ for test_file in "${TEST_FILES[@]}"; do
     echo "Running $test_file..."
 
     # Run the test and capture output (with timeout)
-    output=$(timeout 120s "$EMULATOR" --cpm --headless --unthrottle "$test_path" 2>&1 | tr -d '\r\0' | cat -s || true)
-
+    output=$(timeout 120s "$EMULATOR" --cpm --headless --unthrottle "$test_path" 2>&1 | tr -cd '[:print:]\n' | cat -s || true)
     # Update the README section
     update_section "$test_file" "$output" "$README"
 done
