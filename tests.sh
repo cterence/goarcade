@@ -28,11 +28,6 @@ TEST_FILES=(
     "8080EXM.COM"
 )
 
-# Function to escape special characters for sed
-escape_for_sed() {
-    printf '%s' "$1" | sed -e 's/[&/\]/\\&/g' -e 's/$/\\n/' | tr -d '\n'
-}
-
 # Function to update a section in the README
 update_section() {
     local marker="$1"
@@ -86,7 +81,7 @@ for test_file in "${TEST_FILES[@]}"; do
     echo "Running $test_file..."
 
     # Run the test and capture output (with timeout)
-    output=$(timeout 120s "$EMULATOR" --cpm --headless --unthrottle "$test_path" 2>&1 || true)
+    output=$(timeout 120s "$EMULATOR" --cpm --headless --unthrottle "$test_path" 2>&1 | tr -d '\r\0' | cat -s || true)
 
     # Update the README section
     update_section "$test_file" "$output" "$README"
