@@ -43,6 +43,9 @@ jobs:
       - name: Build
         run: CGO_ENABLED=0 go build
 
+      - name: Run short tests
+        run: go test -test.short ./...
+
       - name: Run CPU tests
         run: ./tests.sh
 

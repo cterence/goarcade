@@ -1,23 +1,28 @@
 package arcade
 
 import (
+	"archive/zip"
 	"context"
 	"crypto/sha256"
 	"encoding/gob"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
 	"github.com/cterence/goarcade/internal/arcade/apu"
+	"github.com/cterence/goarcade/internal/arcade/compatibility"
 	"github.com/cterence/goarcade/internal/arcade/cpu"
+	"github.com/cterence/goarcade/internal/arcade/lib"
 	"github.com/cterence/goarcade/internal/arcade/memory"
 	"github.com/cterence/goarcade/internal/arcade/ui"
 )
@@ -91,27 +96,13 @@ func WithSaveState(saveState string) Option {
 	}
 }
 
-func (a *arcade) Reset() {
-	cpuPC := uint16(0)
-
-	if a.cpm {
-		cpuPC = 0x100
-	}
-
-	a.cpu.Init(cpuPC, a.cpuOpts...)
-
-	if !a.headless {
-		a.ui.Init()
-
-		if !a.noAudio {
-			a.apu.Init(a.soundDir)
-		}
-	}
-}
-
-func Run(ctx context.Context, romPaths []string, options ...Option) error {
+func Run(ctx context.Context, romPath string, options ...Option) error {
 	aCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	if len(romPath) == 0 {
+		return errors.New("no rom passed to emulator")
+	}
 
 	a := arcade{
 		cpu:     &cpu.CPU{},
@@ -119,7 +110,7 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		ui:      &ui.UI{},
 		apu:     &apu.APU{},
 		cancel:  cancel,
-		romHash: romHash(romPaths)[:8],
+		romHash: romHash(romPath)[:8],
 	}
 
 	a.cpu.Bus = a.memory
@@ -134,10 +125,6 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 		o(&a)
 	}
 
-	if len(romPaths) == 0 {
-		return errors.New("no rom passed to emulator")
-	}
-
 	if !a.headless {
 		defer binsdl.Load().Unload()
 		defer a.apu.Close()
@@ -150,17 +137,29 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 
 	i := 0
 
-	if a.cpm {
-		i = 0x100
-	}
+	if filepath.Ext(romPath) == ".zip" {
+		r, err := zip.OpenReader(romPath)
+		if err != nil {
+			return fmt.Errorf("failed to open zip archive: %w", err)
+		}
+		defer r.Close()
 
-	for _, p := range romPaths {
-		// Must not write ROM to 0x2000 - 0x3FFF
-		if i == 0x2000 {
-			i = 0x4000
+		settings, err := compatibility.GetGameSettings(filepath.Base(romPath))
+		if err != nil {
+			return err
 		}
 
-		romBytes, err := os.ReadFile(p)
+		for _, p := range settings.GameParts {
+			if err := a.LoadBytes(p.StartAddr, p.ExpectedSize, lib.Must(GetFileBytesFromZip(r.File, p.FileName))); err != nil {
+				return fmt.Errorf("failed to load %s", p.FileName)
+			}
+		}
+	} else {
+		if a.cpm {
+			i = 0x100
+		}
+
+		romBytes, err := os.ReadFile(romPath)
 		if err != nil {
 			return fmt.Errorf("failed to read rom file: %w", err)
 		}
@@ -229,20 +228,84 @@ func Run(ctx context.Context, romPaths []string, options ...Option) error {
 	return nil
 }
 
-func Disassemble(romPaths []string) error {
-	if len(romPaths) == 0 {
+func (a *arcade) Reset() {
+	cpuPC := uint16(0)
+
+	if a.cpm {
+		cpuPC = 0x100
+	}
+
+	a.cpu.Init(cpuPC, a.cpuOpts...)
+
+	if !a.headless {
+		a.ui.Init()
+
+		if !a.noAudio {
+			a.apu.Init(a.soundDir)
+		}
+	}
+}
+
+func GetFileBytesFromZip(files []*zip.File, fileName string) ([]uint8, error) {
+	fileIndex := slices.IndexFunc(files, func(f *zip.File) bool { return f.Name == fileName })
+
+	f, err := files[fileIndex].Open()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %w", err)
+	}
+	defer f.Close()
+
+	bytes, err := io.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file bytes: %w", err)
+	}
+
+	return bytes, nil
+}
+
+func (a *arcade) LoadBytes(start, expectedSize uint16, bytes []uint8) error {
+	if len(bytes) != int(expectedSize) {
+		return fmt.Errorf("unexpected size difference when loading bytes, expected: %d, actual: %d", expectedSize, len(bytes))
+	}
+
+	addr := start
+	for _, b := range bytes {
+		a.memory.Write(addr, b)
+		addr++
+	}
+
+	return nil
+}
+
+func Disassemble(romPath string) error {
+	if len(romPath) == 0 {
 		return errors.New("no rom passed to emulator")
 	}
 
 	romBytes := []byte{}
 
-	for _, p := range romPaths {
-		romPartBytes, err := os.ReadFile(p)
+	if filepath.Ext(romPath) == ".zip" {
+		r, err := zip.OpenReader(romPath)
+		if err != nil {
+			return fmt.Errorf("failed to open zip archive: %w", err)
+		}
+		defer r.Close()
+
+		settings, err := compatibility.GetGameSettings(filepath.Base(romPath))
+		if err != nil {
+			return err
+		}
+
+		for _, p := range settings.GameParts {
+			romBytes = append(romBytes, lib.Must(GetFileBytesFromZip(r.File, p.FileName))...)
+		}
+	} else {
+		var err error
+
+		romBytes, err = os.ReadFile(romPath)
 		if err != nil {
 			return fmt.Errorf("failed to read rom file: %w", err)
 		}
-
-		romBytes = append(romBytes, romPartBytes...)
 	}
 
 	var i uint16
@@ -276,7 +339,7 @@ func Disassemble(romPaths []string) error {
 	return nil
 }
 
-type state struct {
+type saveState struct {
 	CPU    []uint8
 	Memory []uint8
 }
@@ -293,7 +356,7 @@ func (a *arcade) SaveState() error {
 		memory[addr] = a.memory.Read(uint16(addr))
 	}
 
-	s := state{
+	s := saveState{
 		CPU:    cpu,
 		Memory: memory,
 	}
@@ -321,7 +384,7 @@ func (a *arcade) LoadState() error {
 	}
 	defer f.Close()
 
-	var s state
+	var s saveState
 
 	dec := gob.NewDecoder(f)
 	dec.Decode(&s)
@@ -351,12 +414,10 @@ func trapSigInt(cancel context.CancelFunc) {
 	}()
 }
 
-func romHash(romPaths []string) string {
+func romHash(romPath string) string {
 	h := sha256.New()
 
-	for _, f := range romPaths {
-		h.Write([]uint8(filepath.Base(f)))
-	}
+	h.Write([]uint8(filepath.Base(romPath)))
 
 	return hex.EncodeToString(h.Sum(nil))
 }

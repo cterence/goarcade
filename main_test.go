@@ -54,3 +54,14 @@ func Test_CPU(t *testing.T) {
 		runCPUTest(t, "8080EXM.COM", expected)
 	})
 }
+
+func runDisassemble(t *testing.T, testFileName, expected string) {
+	cmd := exec.Command(os.Args[0], "dasm", "./sub/8080/cpu_tests/"+testFileName)
+
+	cmd.Env = append(os.Environ(), "GO_WANT_HELPER_PROCESS=1")
+	out, err := cmd.Output()
+	assert.NoError(t, err)
+
+	t.Logf("Output from %s:\n%s", testFileName, string(out))
+	assert.Equal(t, expected, string(out))
+}

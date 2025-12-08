@@ -24,7 +24,7 @@ func main() {
 	cmd := &cli.Command{
 		Name:      "goarcade",
 		Usage:     "Intel 8080 arcade emulator",
-		ArgsUsage: "[ordered rom part paths]",
+		ArgsUsage: "[rom path (binary file or .zip archive)]",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "pprof",
@@ -87,7 +87,7 @@ func main() {
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			return arcade.Run(
 				ctx,
-				cmd.Args().Slice(),
+				cmd.Args().First(),
 				arcade.WithDebug(debug),
 				arcade.WithCPM(cpm),
 				arcade.WithHeadless(headless),
@@ -102,9 +102,9 @@ func main() {
 				Name:      "dasm",
 				Aliases:   []string{"d"},
 				Usage:     "disassemble a program",
-				ArgsUsage: "[ordered rom part paths]",
+				ArgsUsage: "[rom path (binary file or .zip archive)]",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					return arcade.Disassemble(cmd.Args().Slice())
+					return arcade.Disassemble(cmd.Args().First())
 				},
 			},
 		},
