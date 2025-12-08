@@ -54,7 +54,7 @@ GLOBAL OPTIONS:
    --help, -h                     show help
 
 # Example: running space-invaders with sound
-./goarcade --sound-dir ./roms/invaders/sounds ./roms/invaders/invaders.h ./roms/invaders/invaders.g ./roms/invaders/invaders.f ./roms/invaders/invaders.e
+./goarcade ./roms/invaders/invaders.zip -s ./roms/invaders/sounds
 ```
 
 ## Controls
