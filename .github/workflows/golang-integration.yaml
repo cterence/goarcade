@@ -2,6 +2,11 @@ name: Golang Integration
 
 on:
   push:
+    paths:
+      - "**.go"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/golang-integration.yaml"
 
 env:
   GO_VERSION: "1.25"
