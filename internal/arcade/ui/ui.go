@@ -42,16 +42,19 @@ type UI struct {
 	ColorOverlays []gamespec.ColorOverlay
 	ColorPROMs    [][]uint8
 
-	colors [WIDTH][HEIGHT]uint32
+	colors      [WIDTH][HEIGHT]uint32
+	framebuffer [WIDTH * HEIGHT * PIXEL_BYTES]uint8
 
 	Paused bool
 }
 
 const (
 	VRAM_START uint16 = 0x2400
-	WIDTH      uint16 = 224
-	HEIGHT     uint16 = 256
-	SCALE      uint16 = 3
+
+	WIDTH       = 224
+	HEIGHT      = 256
+	SCALE       = 3
+	PIXEL_BYTES = 4
 
 	COLOR_BLACK uint32 = 0xFF000000
 	COLOR_WHITE uint32 = 0xFFFFFFFF
@@ -67,14 +70,14 @@ func (ui *UI) Init() {
 	}
 
 	if ui.window == nil && ui.renderer == nil {
-		ui.window, ui.renderer, err = sdl.CreateWindowAndRenderer("goarcade", int(WIDTH*SCALE), int(HEIGHT*SCALE), sdl.WINDOW_RESIZABLE)
+		ui.window, ui.renderer, err = sdl.CreateWindowAndRenderer("goarcade", WIDTH*SCALE, HEIGHT*SCALE, sdl.WINDOW_RESIZABLE)
 		if err != nil {
 			panic("failed to create window and renderer: " + err.Error())
 		}
 	}
 
 	if ui.texture == nil {
-		ui.texture, err = ui.renderer.CreateTexture(sdl.PIXELFORMAT_ARGB8888, sdl.TEXTUREACCESS_STREAMING, int(WIDTH), int(HEIGHT))
+		ui.texture, err = ui.renderer.CreateTexture(sdl.PIXELFORMAT_ARGB8888, sdl.TEXTUREACCESS_STREAMING, WIDTH, HEIGHT)
 		if err != nil {
 			panic("failed to create texture: " + err.Error())
 		}
@@ -85,7 +88,7 @@ func (ui *UI) Init() {
 	}
 
 	if ui.surface == nil {
-		ui.surface, err = sdl.CreateSurface(int(WIDTH), int(HEIGHT), sdl.PIXELFORMAT_ARGB8888)
+		ui.surface, err = sdl.CreateSurface(WIDTH, HEIGHT, sdl.PIXELFORMAT_ARGB8888)
 		if err != nil {
 			panic("failed to create surface: " + err.Error())
 		}
@@ -105,12 +108,11 @@ func (ui *UI) Step() {
 }
 
 func (ui *UI) drawVRAM() {
-	pixels := ui.surface.Pixels()
 	// TODO: change to original 90 degree rotation for getting the colors ?
 	for y := range HEIGHT {
-		row := pixels[int(y)*int(ui.surface.Pitch) : int(y)*int(ui.surface.Pitch)+int(WIDTH)*4]
+		row := ui.framebuffer[y*int(ui.surface.Pitch) : y*int(ui.surface.Pitch)+WIDTH*PIXEL_BYTES]
 		for x := range WIDTH {
-			addr := VRAM_START + (x * (HEIGHT / 8)) + ((HEIGHT - y - 1) / 8)
+			addr := VRAM_START + uint16(x*(HEIGHT/8)) + uint16((HEIGHT-y-1)/8)
 			vramPixels := ui.Bus.Read(addr)
 			vramPixel := (vramPixels >> (7 - y%8)) & 1
 			color := COLOR_BLACK
@@ -119,7 +121,7 @@ func (ui *UI) drawVRAM() {
 				color = ui.getColor(x, y)
 			}
 
-			binary.LittleEndian.PutUint32(row[x*4:], color)
+			binary.LittleEndian.PutUint32(row[x*PIXEL_BYTES:], color)
 		}
 
 		if y == HEIGHT/2 && !ui.Paused {
@@ -131,7 +133,7 @@ func (ui *UI) drawVRAM() {
 		}
 	}
 
-	if err := ui.texture.Update(nil, ui.surface.Pixels(), ui.surface.Pitch); err != nil {
+	if err := ui.texture.Update(nil, ui.framebuffer[:], ui.surface.Pitch); err != nil {
 		panic("failed to update texture: " + err.Error())
 	}
 
@@ -224,9 +226,9 @@ func (ui *UI) computeColorLUT() {
 			color := COLOR_WHITE
 
 			for _, cm := range ui.ColorOverlays {
-				xMatch := (cm.XMin == 0 && cm.XMax == 0) || (x >= cm.XMin && x <= cm.XMax)
+				xMatch := (cm.XMin == 0 && cm.XMax == 0) || (x >= int(cm.XMin) && x <= int(cm.XMax))
 
-				yMatch := (cm.YMin == 0 && cm.YMax == 0) || (y >= cm.YMin && y <= cm.YMax)
+				yMatch := (cm.YMin == 0 && cm.YMax == 0) || (y >= int(cm.YMin) && y <= int(cm.YMax))
 				if xMatch && yMatch {
 					color = cm.Color
 
@@ -239,7 +241,7 @@ func (ui *UI) computeColorLUT() {
 	}
 }
 
-func (ui *UI) getColor(x, y uint16) uint32 {
+func (ui *UI) getColor(x, y int) uint32 {
 	if len(ui.ColorPROMs) == 0 {
 		return ui.colors[x][y]
 	}
@@ -250,7 +252,7 @@ func (ui *UI) getColor(x, y uint16) uint32 {
 	offs := (x << 5) | (invertedY >> 3) // x*32 + invertedY/8
 	// The original mapping on some boards shuffles high/low bits to select PROM entry:
 	colorAddress := ((offs >> 8) << 5) | (offs & 0x1F)
-	colorAddress = colorAddress % uint16(len(ui.ColorPROMs[0]))
+	colorAddress = colorAddress % len(ui.ColorPROMs[0])
 
 	prom := ui.ColorPROMs[0]
 	colorBits := prom[colorAddress] & 0x07
