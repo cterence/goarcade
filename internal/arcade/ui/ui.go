@@ -200,7 +200,7 @@ func (ui *UI) handleEvents() {
 			case sdl.K_2: // Select 2 players
 				ui.CPU.SendInput(1, 1, pressed)
 
-			// P1 controls
+			// Player controls
 			case sdl.K_LEFT: // Left
 				ui.CPU.SendInput(1, 5, pressed)
 				ui.CPU.SendInput(2, 5, pressed)
@@ -241,29 +241,25 @@ func (ui *UI) getColor(x, y int) uint32 {
 		return ui.colors[x][y]
 	}
 
-	vramAddr := VRAM_START + uint16(x*(HEIGHT/8)) + uint16((HEIGHT-y-1)/8)
-
-	offs := int(vramAddr - VRAM_START)
-
-	colorAddress := ((offs >> 8) << 5) | (offs & 0x1F)
-
-	if colorAddress >= len(ui.ColorPROM) {
-		return COLOR_WHITE
-	}
-
+	// Convert horizontal coords to vertical (flip 90 degree clockwise)
+	origX := HEIGHT - y - 1
+	origY := x
+	offs := origY*32 + (origX >> 3)
+	colorAddress := uint16((((offs >> 8) << 5) | (offs & 0x1F)) + 0x80)
 	colorBits := ui.ColorPROM[colorAddress] & 0x07
 
-	var r, g, b uint32
+	// RED BLUE GREEN
+	var r, b, g uint32
 	if colorBits&0x01 != 0 {
 		r = 0xFF
 	}
 
 	if colorBits&0x02 != 0 {
-		g = 0xFF
+		b = 0xFF
 	}
 
 	if colorBits&0x04 != 0 {
-		b = 0xFF
+		g = 0xFF
 	}
 
 	return 0xFF000000 | (r << 16) | (g << 8) | b
