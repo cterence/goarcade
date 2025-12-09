@@ -40,7 +40,7 @@ type UI struct {
 	surface  *sdl.Surface
 
 	ColorOverlays []gamespec.ColorOverlay
-	ColorPROMs    [][]uint8
+	ColorPROM     []uint8
 
 	colors      [WIDTH][HEIGHT]uint32
 	framebuffer [WIDTH * HEIGHT * PIXEL_BYTES]uint8
@@ -50,11 +50,12 @@ type UI struct {
 
 const (
 	VRAM_START uint16 = 0x2400
+	VRAM_SIZE  uint16 = 0x1C00
 
 	WIDTH       = 224
 	HEIGHT      = 256
-	SCALE       = 3
 	PIXEL_BYTES = 4
+	SCALE       = 3
 
 	COLOR_BLACK uint32 = 0xFF000000
 	COLOR_WHITE uint32 = 0xFFFFFFFF
@@ -108,7 +109,6 @@ func (ui *UI) Step() {
 }
 
 func (ui *UI) drawVRAM() {
-	// TODO: change to original 90 degree rotation for getting the colors ?
 	for y := range HEIGHT {
 		row := ui.framebuffer[y*int(ui.surface.Pitch) : y*int(ui.surface.Pitch)+WIDTH*PIXEL_BYTES]
 		for x := range WIDTH {
@@ -193,7 +193,7 @@ func (ui *UI) handleEvents() {
 				}
 
 			// Menu
-			case sdl.K_C: // Add coin
+			case sdl.K_5: // Add coin
 				ui.CPU.SendInput(1, 0, pressed)
 			case sdl.K_1: // Select 1 player
 				ui.CPU.SendInput(1, 2, pressed)
@@ -201,19 +201,14 @@ func (ui *UI) handleEvents() {
 				ui.CPU.SendInput(1, 1, pressed)
 
 			// P1 controls
-			case sdl.K_A: // Left
-				ui.CPU.SendInput(1, 5, pressed)
-			case sdl.K_D: // Right
-				ui.CPU.SendInput(1, 6, pressed)
-			case sdl.K_W: // Shoot
-				ui.CPU.SendInput(1, 4, pressed)
-
-			// P2 controls
 			case sdl.K_LEFT: // Left
+				ui.CPU.SendInput(1, 5, pressed)
 				ui.CPU.SendInput(2, 5, pressed)
 			case sdl.K_RIGHT: // Right
+				ui.CPU.SendInput(1, 6, pressed)
 				ui.CPU.SendInput(2, 6, pressed)
-			case sdl.K_UP: // Shoot
+			case sdl.K_LCTRL: // Shoot
+				ui.CPU.SendInput(1, 4, pressed)
 				ui.CPU.SendInput(2, 4, pressed)
 			}
 		}
@@ -242,20 +237,21 @@ func (ui *UI) computeColorLUT() {
 }
 
 func (ui *UI) getColor(x, y int) uint32 {
-	if len(ui.ColorPROMs) == 0 {
+	if len(ui.ColorPROM) == 0 {
 		return ui.colors[x][y]
 	}
-	// Invert Y for color lookup if your PROM expects that
-	invertedY := HEIGHT - 1 - y
 
-	// Create the offset used by TI, but keep signed/size conversions explicit
-	offs := (x << 5) | (invertedY >> 3) // x*32 + invertedY/8
-	// The original mapping on some boards shuffles high/low bits to select PROM entry:
+	vramAddr := VRAM_START + uint16(x*(HEIGHT/8)) + uint16((HEIGHT-y-1)/8)
+
+	offs := int(vramAddr - VRAM_START)
+
 	colorAddress := ((offs >> 8) << 5) | (offs & 0x1F)
-	colorAddress = colorAddress % len(ui.ColorPROMs[0])
 
-	prom := ui.ColorPROMs[0]
-	colorBits := prom[colorAddress] & 0x07
+	if colorAddress >= len(ui.ColorPROM) {
+		return COLOR_WHITE
+	}
+
+	colorBits := ui.ColorPROM[colorAddress] & 0x07
 
 	var r, g, b uint32
 	if colorBits&0x01 != 0 {

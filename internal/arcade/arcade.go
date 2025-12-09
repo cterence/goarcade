@@ -156,13 +156,8 @@ func Run(ctx context.Context, romPath string, options ...Option) error {
 			}
 		}
 
-		if len(settings.ColorPROMs) > 0 {
-			a.ui.ColorPROMs = make([][]uint8, len(settings.ColorPROMs))
-		}
-
-		for i, p := range settings.ColorPROMs {
-			a.ui.ColorPROMs[i] = make([]uint8, p.ExpectedSize)
-			copy(a.ui.ColorPROMs[i][:], lib.Must(GetFileBytesFromZip(r.File, p.FileName))[:])
+		for _, p := range settings.ColorPROMs {
+			a.ui.ColorPROM = append(a.ui.ColorPROM, lib.Must(GetFileBytesFromZip(r.File, p.FileName))...)
 		}
 	} else {
 		if a.cpm {
