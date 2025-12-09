@@ -70,11 +70,11 @@ var gameSpecs = map[string]Specs{
 		ColorOverlays: []ColorOverlay{
 			{
 				YMin:  32,
-				YMax:  63,
+				YMax:  62,
 				Color: COLOR_RED,
 			},
 			{
-				YMin:  180,
+				YMin:  184,
 				YMax:  240,
 				Color: COLOR_GREEN,
 			},
