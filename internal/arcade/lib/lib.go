@@ -2,7 +2,8 @@ package lib
 
 import "fmt"
 
-func DeferErr(err error) {
+func DeferErr(f func() error) {
+	err := f()
 	if err != nil {
 		fmt.Println("error on deferred function:", err.Error())
 	}

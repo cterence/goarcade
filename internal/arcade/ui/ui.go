@@ -1,8 +1,8 @@
 package ui
 
 import (
+	"encoding/binary"
 	"fmt"
-	"unsafe"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/cterence/goarcade/internal/arcade/gamespec"
@@ -55,8 +55,6 @@ const (
 
 	COLOR_BLACK uint32 = 0xFF000000
 	COLOR_WHITE uint32 = 0xFFFFFFFF
-	COLOR_RED   uint32 = 0xFFFF0000
-	COLOR_GREEN uint32 = 0xFF00FF00
 )
 
 func (ui *UI) Init() {
@@ -108,23 +106,20 @@ func (ui *UI) Step() {
 
 func (ui *UI) drawVRAM() {
 	pixels := ui.surface.Pixels()
-	pitch := int(ui.surface.Pitch) / 4
-	pixelData := unsafe.Slice((*uint32)(unsafe.Pointer(&pixels[0])), len(pixels)/4)
-
 	// TODO: change to original 90 degree rotation for getting the colors ?
 	for y := range HEIGHT {
-		rowStart := int(y) * pitch
+		row := pixels[int(y)*int(ui.surface.Pitch) : int(y)*int(ui.surface.Pitch)+int(WIDTH)*4]
 		for x := range WIDTH {
 			addr := VRAM_START + (x * (HEIGHT / 8)) + ((HEIGHT - y - 1) / 8)
-			pixels := ui.Bus.Read(addr)
-			pixel := (pixels >> (7 - y%8)) & 1
+			vramPixels := ui.Bus.Read(addr)
+			vramPixel := (vramPixels >> (7 - y%8)) & 1
 			color := COLOR_BLACK
 
-			if pixel == 1 {
+			if vramPixel == 1 {
 				color = ui.getColor(x, y)
 			}
 
-			pixelData[rowStart+int(x)] = color
+			binary.LittleEndian.PutUint32(row[x*4:], color)
 		}
 
 		if y == HEIGHT/2 && !ui.Paused {

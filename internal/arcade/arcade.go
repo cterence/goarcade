@@ -139,7 +139,7 @@ func Run(ctx context.Context, romPath string, options ...Option) error {
 		if err != nil {
 			return fmt.Errorf("failed to open zip archive: %w", err)
 		}
-		defer lib.DeferErr(r.Close())
+		defer lib.DeferErr(r.Close)
 
 		settings, err := gamespec.GetGameSettings(filepath.Base(romPath))
 		if err != nil {
@@ -265,7 +265,7 @@ func GetFileBytesFromZip(files []*zip.File, fileName string) ([]uint8, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	defer lib.DeferErr(f.Close())
+	defer lib.DeferErr(f.Close)
 
 	bytes, err := io.ReadAll(f)
 	if err != nil {
@@ -301,7 +301,7 @@ func Disassemble(romPath string) error {
 		if err != nil {
 			return fmt.Errorf("failed to open zip archive: %w", err)
 		}
-		defer lib.DeferErr(r.Close())
+		defer lib.DeferErr(r.Close)
 
 		settings, err := gamespec.GetGameSettings(filepath.Base(romPath))
 		if err != nil {
@@ -380,7 +380,7 @@ func (a *arcade) SaveState() error {
 	if err != nil {
 		return err
 	}
-	defer lib.DeferErr(f.Close())
+	defer lib.DeferErr(f.Close)
 
 	enc := gob.NewEncoder(f)
 
@@ -404,7 +404,7 @@ func (a *arcade) LoadState() error {
 	if err != nil {
 		return err
 	}
-	defer lib.DeferErr(f.Close())
+	defer lib.DeferErr(f.Close)
 
 	var s saveState
 
