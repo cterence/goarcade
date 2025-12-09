@@ -44,7 +44,7 @@ const (
 )
 
 var gameSpecs = map[string]Specs{
-	"invaders.zip": {
+	"invaders": {
 		ROMParts: []ROMPart{
 			{
 				FileName:     "invaders.h",
@@ -88,7 +88,7 @@ var gameSpecs = map[string]Specs{
 		},
 	},
 
-	"invadpt2.zip": {
+	"invadpt2": {
 		ROMParts: []ROMPart{
 			{
 				FileName:     "pv01",
@@ -127,12 +127,87 @@ var gameSpecs = map[string]Specs{
 			},
 		},
 	},
+
+	"spclaser": {
+		ROMParts: []ROMPart{
+			{
+				FileName:     "la01",
+				StartAddr:    0x0,
+				ExpectedSize: 0x800,
+			},
+			{
+				FileName:     "la02",
+				StartAddr:    0x800,
+				ExpectedSize: 0x800,
+			},
+			{
+				FileName:     "la03",
+				StartAddr:    0x1000,
+				ExpectedSize: 0x800,
+			},
+			{
+				FileName:     "la04",
+				StartAddr:    0x1800,
+				ExpectedSize: 0x800,
+			},
+		},
+		ColorPROMs: []ColorPROM{
+			{
+				FileName:     "01.1",
+				ExpectedSize: 0x400,
+			},
+			{
+				FileName:     "02.2",
+				ExpectedSize: 0x400,
+			},
+		},
+	},
+
+	"ballbomb": {
+		ROMParts: []ROMPart{
+			{
+				FileName:     "tn01",
+				StartAddr:    0x0,
+				ExpectedSize: 0x800,
+			},
+			{
+				FileName:     "tn02",
+				StartAddr:    0x800,
+				ExpectedSize: 0x800,
+			},
+			{
+				FileName:     "tn03",
+				StartAddr:    0x1000,
+				ExpectedSize: 0x800,
+			},
+			{
+				FileName:     "tn04",
+				StartAddr:    0x1800,
+				ExpectedSize: 0x800,
+			},
+			{
+				FileName:     "tn05-1",
+				StartAddr:    0x4000,
+				ExpectedSize: 0x800,
+			},
+		},
+		ColorPROMs: []ColorPROM{
+			{
+				FileName:     "tn06",
+				ExpectedSize: 0x400,
+			},
+			{
+				FileName:     "tn07",
+				ExpectedSize: 0x400,
+			},
+		},
+	},
 }
 
-func GetGameSettings(zipFileName string) (*Specs, error) {
-	s, ok := gameSpecs[zipFileName]
+func GetGameSettings(gameName string) (*Specs, error) {
+	s, ok := gameSpecs[gameName]
 	if !ok {
-		return nil, fmt.Errorf("no compatibility settings for game: %s", zipFileName)
+		return nil, fmt.Errorf("no compatibility settings for game: %s", gameName)
 	}
 
 	if err := validateSettings(&s); err != nil {

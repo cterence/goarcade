@@ -141,7 +141,7 @@ func Run(ctx context.Context, romPath string, options ...Option) error {
 		}
 		defer lib.DeferErr(r.Close)
 
-		settings, err := gamespec.GetGameSettings(filepath.Base(romPath))
+		settings, err := gamespec.GetGameSettings(strings.ReplaceAll(filepath.Base(romPath), filepath.Ext(romPath), ""))
 		if err != nil {
 			return err
 		}
@@ -298,7 +298,7 @@ func Disassemble(romPath string) error {
 		}
 		defer lib.DeferErr(r.Close)
 
-		settings, err := gamespec.GetGameSettings(filepath.Base(romPath))
+		settings, err := gamespec.GetGameSettings(strings.ReplaceAll(filepath.Base(romPath), filepath.Ext(romPath), ""))
 		if err != nil {
 			return err
 		}
