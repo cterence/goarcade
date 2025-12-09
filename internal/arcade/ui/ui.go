@@ -29,20 +29,22 @@ type arcade interface {
 }
 
 type UI struct {
-	Arcade        arcade
-	Bus           bus
-	CPU           cpu
-	APU           apu
-	Paused        bool
-	ColorOverlays []gamespec.ColorOverlay
-	ColorPROMs    [][]uint8
-
-	colors [WIDTH][HEIGHT]uint32
+	Arcade arcade
+	Bus    bus
+	CPU    cpu
+	APU    apu
 
 	window   *sdl.Window
 	renderer *sdl.Renderer
 	texture  *sdl.Texture
 	surface  *sdl.Surface
+
+	ColorOverlays []gamespec.ColorOverlay
+	ColorPROMs    [][]uint8
+
+	colors [WIDTH][HEIGHT]uint32
+
+	Paused bool
 }
 
 const (

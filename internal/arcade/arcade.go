@@ -38,16 +38,17 @@ type arcade struct {
 	apu    *apu.APU
 	cancel context.CancelFunc
 
+	soundDir  string
+	saveState string
+
+	romPath string
+
 	cpuOpts []cpu.Option
 
 	cpm        bool
 	headless   bool
 	unthrottle bool
 	noAudio    bool
-	soundDir   string
-	saveState  string
-
-	romPath string
 }
 
 type Option func(*arcade)

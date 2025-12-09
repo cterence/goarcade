@@ -1,12 +1,12 @@
 package cpu
 
 type inst struct {
+	exec   func(*CPU, string)
 	Name   string
 	Op1    string
 	Op2    string
 	Length uint8
 	Cycles uint8
-	exec   func(*CPU, string)
 }
 
 var InstByOpcode = [256]inst{

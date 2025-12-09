@@ -20,10 +20,10 @@ type apu interface {
 }
 
 type CPU struct {
+	Bus bus
+	APU apu
 	state
 
-	Bus     bus
-	APU     apu
 	Running bool
 }
 

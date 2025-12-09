@@ -10,11 +10,11 @@ import (
 )
 
 type APU struct {
-	device   sdl.AudioDeviceID
 	streams  []*sdl.AudioStream
 	sounds   [][]uint8
 	looping  []bool
 	loopStop []chan struct{}
+	device   sdl.AudioDeviceID
 }
 
 func (a *APU) Init(soundDir string) {
