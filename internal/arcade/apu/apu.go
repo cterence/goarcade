@@ -135,7 +135,9 @@ func (a *APU) StartSoundLoop(soundIndex uint8) {
 		for {
 			select {
 			case <-a.loopStop[soundIndex]:
-				stream.Clear()
+				if err := stream.Clear(); err != nil {
+					panic(err)
+				}
 
 				return
 			default:
@@ -145,7 +147,9 @@ func (a *APU) StartSoundLoop(soundIndex uint8) {
 				}
 
 				if queued < int32(len(sound)) {
-					stream.PutData(sound)
+					if err := stream.PutData(sound); err != nil {
+						panic(err)
+					}
 				}
 
 				time.Sleep(10 * time.Millisecond)

@@ -5,6 +5,7 @@ import (
 	"unsafe"
 
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/cterence/goarcade/internal/arcade/gamespec"
 )
 
 type bus interface {
@@ -28,11 +29,15 @@ type arcade interface {
 }
 
 type UI struct {
-	Arcade arcade
-	Bus    bus
-	CPU    cpu
-	APU    apu
-	Paused bool
+	Arcade        arcade
+	Bus           bus
+	CPU           cpu
+	APU           apu
+	Paused        bool
+	ColorOverlays []gamespec.ColorOverlay
+	ColorPROMs    [][]uint8
+
+	colors [WIDTH][HEIGHT]uint32
 
 	window   *sdl.Window
 	renderer *sdl.Renderer
@@ -54,6 +59,7 @@ const (
 
 func (ui *UI) Init() {
 	ui.Paused = false
+	ui.computeColorLUT()
 
 	err := sdl.Init(sdl.INIT_VIDEO)
 	if err != nil {
@@ -73,7 +79,9 @@ func (ui *UI) Init() {
 			panic("failed to create texture: " + err.Error())
 		}
 
-		ui.texture.SetScaleMode(sdl.SCALEMODE_NEAREST)
+		if err := ui.texture.SetScaleMode(sdl.SCALEMODE_NEAREST); err != nil {
+			panic("failed to set texture scale mode: " + err.Error())
+		}
 	}
 
 	if ui.surface == nil {
@@ -101,24 +109,17 @@ func (ui *UI) drawVRAM() {
 	pitch := int(ui.surface.Pitch) / 4
 	pixelData := unsafe.Slice((*uint32)(unsafe.Pointer(&pixels[0])), len(pixels)/4)
 
+	// TODO: change to original 90 degree rotation for getting the colors ?
 	for y := range HEIGHT {
 		rowStart := int(y) * pitch
 		for x := range WIDTH {
 			addr := VRAM_START + (x * (HEIGHT / 8)) + ((HEIGHT - y - 1) / 8)
 			pixels := ui.Bus.Read(addr)
 			pixel := (pixels >> (7 - y%8)) & 1
-
 			color := COLOR_BLACK
-			if pixel == 1 {
-				color = COLOR_WHITE
 
-				if y > 180 {
-					if y < 240 || (x > 16 && x < 128) {
-						color = COLOR_GREEN
-					}
-				} else if y >= 32 && y < 64 {
-					color = COLOR_RED
-				}
+			if pixel == 1 {
+				color = ui.getColor(x, y)
 			}
 
 			pixelData[rowStart+int(x)] = color
@@ -218,4 +219,57 @@ func (ui *UI) handleEvents() {
 			}
 		}
 	}
+}
+
+func (ui *UI) computeColorLUT() {
+	for x := range WIDTH {
+		for y := range HEIGHT {
+			color := COLOR_WHITE
+
+			for _, cm := range ui.ColorOverlays {
+				xMatch := (cm.XMin == 0 && cm.XMax == 0) || (x >= cm.XMin && x <= cm.XMax)
+
+				yMatch := (cm.YMin == 0 && cm.YMax == 0) || (y >= cm.YMin && y <= cm.YMax)
+				if xMatch && yMatch {
+					color = cm.Color
+
+					break
+				}
+			}
+
+			ui.colors[x][y] = color
+		}
+	}
+}
+
+func (ui *UI) getColor(x, y uint16) uint32 {
+	if len(ui.ColorPROMs) == 0 {
+		return ui.colors[x][y]
+	}
+	// Invert Y for color lookup if your PROM expects that
+	invertedY := HEIGHT - 1 - y
+
+	// Create the offset used by TI, but keep signed/size conversions explicit
+	offs := (x << 5) | (invertedY >> 3) // x*32 + invertedY/8
+	// The original mapping on some boards shuffles high/low bits to select PROM entry:
+	colorAddress := ((offs >> 8) << 5) | (offs & 0x1F)
+	colorAddress = colorAddress % uint16(len(ui.ColorPROMs[0]))
+
+	prom := ui.ColorPROMs[0]
+	colorBits := prom[colorAddress] & 0x07
+
+	var r, g, b uint32
+	if colorBits&0x01 != 0 {
+		r = 0xFF
+	}
+
+	if colorBits&0x02 != 0 {
+		g = 0xFF
+	}
+
+	if colorBits&0x04 != 0 {
+		b = 0xFF
+	}
+
+	return 0xFF000000 | (r << 16) | (g << 8) | b
 }

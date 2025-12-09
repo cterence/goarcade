@@ -18,8 +18,8 @@ import (
 
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
 	"github.com/cterence/goarcade/internal/arcade/apu"
-	"github.com/cterence/goarcade/internal/arcade/compatibility"
 	"github.com/cterence/goarcade/internal/arcade/cpu"
+	"github.com/cterence/goarcade/internal/arcade/gamespec"
 	"github.com/cterence/goarcade/internal/arcade/lib"
 	"github.com/cterence/goarcade/internal/arcade/memory"
 	"github.com/cterence/goarcade/internal/arcade/ui"
@@ -131,8 +131,6 @@ func Run(ctx context.Context, romPath string, options ...Option) error {
 		trapSigInt(cancel)
 	}
 
-	a.Reset()
-
 	i := 0
 
 	if filepath.Ext(romPath) == ".zip" {
@@ -140,17 +138,30 @@ func Run(ctx context.Context, romPath string, options ...Option) error {
 		if err != nil {
 			return fmt.Errorf("failed to open zip archive: %w", err)
 		}
-		defer r.Close()
+		defer lib.DeferErr(r.Close())
 
-		settings, err := compatibility.GetGameSettings(filepath.Base(romPath))
+		settings, err := gamespec.GetGameSettings(filepath.Base(romPath))
 		if err != nil {
 			return err
 		}
 
-		for _, p := range settings.GameParts {
+		a.ui.ColorOverlays = settings.ColorOverlays
+
+		a.Reset()
+
+		for _, p := range settings.ROMParts {
 			if err := a.LoadBytes(p.StartAddr, p.ExpectedSize, lib.Must(GetFileBytesFromZip(r.File, p.FileName))); err != nil {
 				return fmt.Errorf("failed to load %s", p.FileName)
 			}
+		}
+
+		if len(settings.ColorPROMs) > 0 {
+			a.ui.ColorPROMs = make([][]uint8, len(settings.ColorPROMs))
+		}
+
+		for i, p := range settings.ColorPROMs {
+			a.ui.ColorPROMs[i] = make([]uint8, p.ExpectedSize)
+			copy(a.ui.ColorPROMs[i][:], lib.Must(GetFileBytesFromZip(r.File, p.FileName))[:])
 		}
 	} else {
 		if a.cpm {
@@ -161,6 +172,8 @@ func Run(ctx context.Context, romPath string, options ...Option) error {
 		if err != nil {
 			return fmt.Errorf("failed to read rom file: %w", err)
 		}
+
+		a.Reset()
 
 		for _, b := range romBytes {
 			a.memory.Write(uint16(i), b)
@@ -251,7 +264,7 @@ func GetFileBytesFromZip(files []*zip.File, fileName string) ([]uint8, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	defer f.Close()
+	defer lib.DeferErr(f.Close())
 
 	bytes, err := io.ReadAll(f)
 	if err != nil {
@@ -287,14 +300,14 @@ func Disassemble(romPath string) error {
 		if err != nil {
 			return fmt.Errorf("failed to open zip archive: %w", err)
 		}
-		defer r.Close()
+		defer lib.DeferErr(r.Close())
 
-		settings, err := compatibility.GetGameSettings(filepath.Base(romPath))
+		settings, err := gamespec.GetGameSettings(filepath.Base(romPath))
 		if err != nil {
 			return err
 		}
 
-		for _, p := range settings.GameParts {
+		for _, p := range settings.ROMParts {
 			romBytes = append(romBytes, lib.Must(GetFileBytesFromZip(r.File, p.FileName))...)
 		}
 	} else {
@@ -366,7 +379,7 @@ func (a *arcade) SaveState() error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer lib.DeferErr(f.Close())
 
 	enc := gob.NewEncoder(f)
 
@@ -390,12 +403,14 @@ func (a *arcade) LoadState() error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer lib.DeferErr(f.Close())
 
 	var s saveState
 
 	dec := gob.NewDecoder(f)
-	dec.Decode(&s)
+	if err := dec.Decode(&s); err != nil {
+		return fmt.Errorf("failed to decode save state: %w", err)
+	}
 
 	if err := a.cpu.LoadState(s.CPU); err != nil {
 		return fmt.Errorf("failed to load CPU state: %w", err)

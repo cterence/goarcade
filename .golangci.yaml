@@ -1,6 +1,6 @@
 version: "2"
 linters:
-  default: fast
+  default: standard
   enable:
     - perfsprint
     - staticcheck
