@@ -2,8 +2,6 @@ package apu
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -17,8 +15,8 @@ type APU struct {
 	device   sdl.AudioDeviceID
 }
 
-func (a *APU) Init(soundDir string) {
-	if soundDir == "" {
+func (a *APU) Init(soundListBytes [][]uint8) {
+	if len(soundListBytes) == 0 {
 		fmt.Println("warning: sound files not loaded, audio disabled")
 
 		return
@@ -40,37 +38,35 @@ func (a *APU) Init(soundDir string) {
 		panic("failed to get default playback audio device: " + err.Error())
 	}
 
-	wavFiles, err := os.ReadDir(soundDir)
-	if err != nil {
-		panic("failed to read sound directory: " + err.Error())
-	}
+	a.streams = make([]*sdl.AudioStream, len(soundListBytes))
+	a.sounds = make([][]uint8, len(soundListBytes))
+	a.looping = make([]bool, len(soundListBytes))
+	a.loopStop = make([]chan struct{}, len(soundListBytes))
 
-	a.streams = make([]*sdl.AudioStream, len(wavFiles))
-	a.sounds = make([][]uint8, len(wavFiles))
-	a.looping = make([]bool, len(wavFiles))
-	a.loopStop = make([]chan struct{}, len(wavFiles))
+	for i, b := range soundListBytes {
+		soundIOStream, err := sdl.IOFromBytes(b)
+		if err != nil {
+			panic("failed to create sound IO stream: " + err.Error())
+		}
 
-	for i, f := range wavFiles {
-		if filepath.Ext(f.Name()) == ".wav" {
-			soundData, err := sdl.LoadWAV(filepath.Join(soundDir, f.Name()), spec)
+		soundData, err := sdl.LoadWAV_IO(soundIOStream, true, spec)
+		if err != nil {
+			panic("failed to load WAV file: " + err.Error())
+		}
+
+		// Downscale volume at 33% to allow 3 sounds to play simultaneously without audio clipping
+		a.sounds[i] = scaleVolume(soundData, 0.33)
+
+		if a.streams[i] == nil {
+			a.streams[i], err = sdl.CreateAudioStream(spec, spec)
 			if err != nil {
-				panic("failed to load WAV file: " + err.Error())
+				panic("failed to create audio stream: " + err.Error())
 			}
+		}
 
-			// Downscale volume at 33% to allow 3 sounds to play simultaneously without audio clipping
-			a.sounds[i] = scaleVolume(soundData, 0.33)
-
-			if a.streams[i] == nil {
-				a.streams[i], err = sdl.CreateAudioStream(spec, spec)
-				if err != nil {
-					panic("failed to create audio stream: " + err.Error())
-				}
-			}
-
-			if a.streams[i].Device() == 0 {
-				if err := a.device.BindAudioStream(a.streams[i]); err != nil {
-					panic("failed to bind audio stream to device: " + err.Error())
-				}
+		if a.streams[i].Device() == 0 {
+			if err := a.device.BindAudioStream(a.streams[i]); err != nil {
+				panic("failed to bind audio stream to device: " + err.Error())
 			}
 		}
 	}

@@ -2,23 +2,63 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/cterence/goarcade/internal/arcade"
 	"github.com/urfave/cli/v3"
 )
 
+func readFiles(romPath, configPath, soundDir string) ([]uint8, []uint8, [][]uint8, error) {
+	romBytes, err := os.ReadFile(romPath)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to read rom file: %w", err)
+	}
+
+	configBytes, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	var soundListBytes [][]uint8
+
+	if soundDir != "" {
+		soundFiles, err := os.ReadDir(soundDir)
+		if err != nil {
+			panic("failed to read sound directory: " + err.Error())
+		}
+
+		soundListBytes = make([][]uint8, len(soundFiles))
+
+		for i, f := range soundFiles {
+			if filepath.Ext(f.Name()) == ".wav" {
+				soundData, err := os.ReadFile(filepath.Join(soundDir, f.Name()))
+				if err != nil {
+					panic("failed to load WAV file: " + err.Error())
+				}
+
+				soundListBytes[i] = make([]uint8, len(soundData))
+				copy(soundListBytes[i], soundData)
+			}
+		}
+	}
+
+	return romBytes, configBytes, soundListBytes, err
+}
+
 func main() {
 	var (
-		debug      bool
-		cpm        bool
-		headless   bool
-		unthrottle bool
-		noAudio    bool
-		soundDir   string
-		saveState  string
+		debug         bool
+		cpm           bool
+		headless      bool
+		unthrottle    bool
+		mute          bool
+		soundDir      string
+		saveStatePath string
+		configPath    string
 	)
 
 	cmd := &cli.Command{
@@ -26,6 +66,29 @@ func main() {
 		Usage:     "Intel 8080 arcade emulator",
 		ArgsUsage: "[rom path (binary file or .zip archive)]",
 		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "config",
+				Usage:       "config file path",
+				Value:       "./config.yaml",
+				TakesFile:   true,
+				Destination: &configPath,
+			},
+
+			&cli.StringFlag{
+				Name:        "state",
+				Usage:       "save state file path",
+				TakesFile:   true,
+				Destination: &saveStatePath,
+			},
+
+			&cli.StringFlag{
+				Name:        "sound-dir",
+				Aliases:     []string{"s"},
+				Usage:       "directory path for WAV sound files",
+				TakesFile:   true,
+				Destination: &soundDir,
+			},
+
 			&cli.BoolFlag{
 				Name:    "pprof",
 				Aliases: []string{"p"},
@@ -37,12 +100,6 @@ func main() {
 
 					return nil
 				},
-			},
-
-			&cli.StringFlag{
-				Name:        "state",
-				Usage:       "save state file",
-				Destination: &saveState,
 			},
 
 			&cli.BoolFlag{
@@ -57,18 +114,10 @@ func main() {
 				Usage:       "run without UI window",
 				Destination: &headless,
 			},
-
-			&cli.StringFlag{
-				Name:        "sound-dir",
-				Aliases:     []string{"s"},
-				Usage:       "directory path for WAV sound files",
-				Destination: &soundDir,
-			},
-
 			&cli.BoolFlag{
-				Name:        "no-audio",
+				Name:        "mute",
 				Usage:       "run without audio",
-				Destination: &noAudio,
+				Destination: &mute,
 			},
 
 			&cli.BoolFlag{
@@ -85,16 +134,30 @@ func main() {
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
+			romPath := cmd.Args().First()
+
+			if romPath == "" {
+				fmt.Printf("error: no rom path given\n\n")
+				return cli.ShowSubcommandHelp(cmd)
+			}
+
+			romBytes, configBytes, soundListBytes, err := readFiles(romPath, configPath, soundDir)
+			if err != nil {
+				return err
+			}
+
 			return arcade.Run(
 				ctx,
-				cmd.Args().First(),
+				romBytes,
+				configBytes,
+				soundListBytes,
+				romPath,
 				arcade.WithDebug(debug),
 				arcade.WithCPM(cpm),
 				arcade.WithHeadless(headless),
-				arcade.WithNoAudio(noAudio),
-				arcade.WithSoundDir(soundDir),
+				arcade.WithMute(mute),
 				arcade.WithUnthrottle(unthrottle),
-				arcade.WithSaveState(saveState),
+				arcade.WithSaveState(saveStatePath),
 			)
 		},
 		Commands: []*cli.Command{
@@ -104,7 +167,19 @@ func main() {
 				Usage:     "disassemble a program",
 				ArgsUsage: "[rom path (binary file or .zip archive)]",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					return arcade.Disassemble(cmd.Args().First())
+					romPath := cmd.Args().First()
+
+					if romPath == "" {
+						fmt.Printf("error: no rom path given\n\n")
+						return cli.ShowSubcommandHelp(cmd)
+					}
+
+					romBytes, configBytes, _, err := readFiles(romPath, configPath, "")
+					if err != nil {
+						return err
+					}
+
+					return arcade.Disassemble(romBytes, configBytes, romPath)
 				},
 			},
 		},

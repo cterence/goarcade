@@ -1,0 +1,93 @@
+gameSpecs:
+  invaders:
+    romParts:
+      - fileName: invaders.h
+        startAddr: 0x0
+        expectedSize: 0x800
+      - fileName: invaders.g
+        startAddr: 0x800
+        expectedSize: 0x800
+      - fileName: invaders.f
+        startAddr: 0x1000
+        expectedSize: 0x800
+      - fileName: invaders.e
+        startAddr: 0x1800
+        expectedSize: 0x800
+    colorOverlays:
+      - yMin: 32
+        yMax: 62
+        color: 0xFFFF0000
+      - yMin: 184
+        yMax: 240
+        color: 0xFF00FF00
+      - xMin: 16
+        xMax: 128
+        yMin: 241
+        yMax: 256
+        color: 0xFF00FF00
+
+  invadpt2:
+    romParts:
+      - fileName: pv01
+        startAddr: 0x0
+        expectedSize: 0x800
+      - fileName: pv02
+        startAddr: 0x800
+        expectedSize: 0x800
+      - fileName: pv03
+        startAddr: 0x1000
+        expectedSize: 0x800
+      - fileName: pv04
+        startAddr: 0x1800
+        expectedSize: 0x800
+      - fileName: pv05
+        startAddr: 0x4000
+        expectedSize: 0x800
+    colorPROMs:
+      - fileName: pv06.1
+        expectedSize: 0x400
+      - fileName: pv07.2
+        expectedSize: 0x400
+
+  spclaser:
+    romParts:
+      - fileName: la01
+        startAddr: 0x0
+        expectedSize: 0x800
+      - fileName: la02
+        startAddr: 0x800
+        expectedSize: 0x800
+      - fileName: la03
+        startAddr: 0x1000
+        expectedSize: 0x800
+      - fileName: la04
+        startAddr: 0x1800
+        expectedSize: 0x800
+    colorPROMs:
+      - fileName: "01.1"
+        expectedSize: 0x400
+      - fileName: "02.2"
+        expectedSize: 0x400
+
+  ballbomb:
+    romParts:
+      - fileName: tn01
+        startAddr: 0x0
+        expectedSize: 0x800
+      - fileName: tn02
+        startAddr: 0x800
+        expectedSize: 0x800
+      - fileName: tn03
+        startAddr: 0x1000
+        expectedSize: 0x800
+      - fileName: tn04
+        startAddr: 0x1800
+        expectedSize: 0x800
+      - fileName: tn05-1
+        startAddr: 0x4000
+        expectedSize: 0x800
+    colorPROMs:
+      - fileName: tn06
+        expectedSize: 0x400
+      - fileName: tn07
+        expectedSize: 0x400

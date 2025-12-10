@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/cterence/goarcade/internal/arcade/gamespec"
+	"github.com/cterence/goarcade/internal/arcade/config"
 )
 
 type bus interface {
@@ -39,7 +39,7 @@ type UI struct {
 	texture  *sdl.Texture
 	surface  *sdl.Surface
 
-	ColorOverlays []gamespec.ColorOverlay
+	ColorOverlays []config.ColorOverlay
 	ColorPROM     []uint8
 
 	colors      [WIDTH][HEIGHT]uint32

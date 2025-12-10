@@ -2,6 +2,7 @@ package arcade
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/gob"
 	"errors"
@@ -18,8 +19,8 @@ import (
 
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
 	"github.com/cterence/goarcade/internal/arcade/apu"
+	"github.com/cterence/goarcade/internal/arcade/config"
 	"github.com/cterence/goarcade/internal/arcade/cpu"
-	"github.com/cterence/goarcade/internal/arcade/gamespec"
 	"github.com/cterence/goarcade/internal/arcade/lib"
 	"github.com/cterence/goarcade/internal/arcade/memory"
 	"github.com/cterence/goarcade/internal/arcade/ui"
@@ -38,8 +39,8 @@ type arcade struct {
 	apu    *apu.APU
 	cancel context.CancelFunc
 
-	soundDir  string
-	saveState string
+	soundListBytes [][]uint8
+	saveState      string
 
 	romPath string
 
@@ -48,7 +49,7 @@ type arcade struct {
 	cpm        bool
 	headless   bool
 	unthrottle bool
-	noAudio    bool
+	mute       bool
 }
 
 type Option func(*arcade)
@@ -71,15 +72,9 @@ func WithHeadless(headless bool) Option {
 	}
 }
 
-func WithSoundDir(soundDir string) Option {
+func WithMute(mute bool) Option {
 	return func(a *arcade) {
-		a.soundDir = soundDir
-	}
-}
-
-func WithNoAudio(noAudio bool) Option {
-	return func(a *arcade) {
-		a.noAudio = noAudio
+		a.mute = mute
 	}
 }
 
@@ -95,21 +90,22 @@ func WithSaveState(saveState string) Option {
 	}
 }
 
-func Run(ctx context.Context, romPath string, options ...Option) error {
+func Run(ctx context.Context, romBytes []uint8, configBytes []uint8, soundListBytes [][]uint8, romPath string, options ...Option) error {
 	aCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	if len(romPath) == 0 {
+	if len(romBytes) == 0 {
 		return errors.New("no rom passed to emulator")
 	}
 
 	a := arcade{
-		cpu:     &cpu.CPU{},
-		memory:  &memory.Memory{},
-		ui:      &ui.UI{},
-		apu:     &apu.APU{},
-		cancel:  cancel,
-		romPath: romPath,
+		cpu:            &cpu.CPU{},
+		memory:         &memory.Memory{},
+		ui:             &ui.UI{},
+		apu:            &apu.APU{},
+		cancel:         cancel,
+		romPath:        romPath,
+		soundListBytes: soundListBytes,
 	}
 
 	a.cpu.Bus = a.memory
@@ -132,16 +128,18 @@ func Run(ctx context.Context, romPath string, options ...Option) error {
 		trapSigInt(cancel)
 	}
 
+	romBytesReader := bytes.NewReader(romBytes)
+	gameName := strings.ReplaceAll(filepath.Base(romPath), filepath.Ext(romPath), "")
+
 	i := 0
 
 	if filepath.Ext(romPath) == ".zip" {
-		r, err := zip.OpenReader(romPath)
+		r, err := zip.NewReader(romBytesReader, int64(len(romBytes)))
 		if err != nil {
 			return fmt.Errorf("failed to open zip archive: %w", err)
 		}
-		defer lib.DeferErr(r.Close)
 
-		settings, err := gamespec.GetGameSettings(strings.ReplaceAll(filepath.Base(romPath), filepath.Ext(romPath), ""))
+		settings, err := config.LoadConfig(configBytes, gameName)
 		if err != nil {
 			return err
 		}
@@ -162,11 +160,6 @@ func Run(ctx context.Context, romPath string, options ...Option) error {
 	} else {
 		if a.cpm {
 			i = 0x100
-		}
-
-		romBytes, err := os.ReadFile(romPath)
-		if err != nil {
-			return fmt.Errorf("failed to read rom file: %w", err)
 		}
 
 		a.Reset()
@@ -247,8 +240,8 @@ func (a *arcade) Reset() {
 	if !a.headless {
 		a.ui.Init()
 
-		if !a.noAudio {
-			a.apu.Init(a.soundDir)
+		if !a.mute {
+			a.apu.Init(a.soundListBytes)
 		}
 	}
 }
@@ -284,56 +277,51 @@ func (a *arcade) LoadBytes(start, expectedSize uint16, bytes []uint8) error {
 	return nil
 }
 
-func Disassemble(romPath string) error {
-	if len(romPath) == 0 {
+func Disassemble(romBytes, configBytes []uint8, romPath string) error {
+	if len(romBytes) == 0 {
 		return errors.New("no rom passed to emulator")
 	}
 
-	romBytes := []byte{}
+	readableROMBytes := romBytes
+
+	romBytesReader := bytes.NewReader(romBytes)
+	gameName := strings.ReplaceAll(filepath.Base(romPath), filepath.Ext(romPath), "")
 
 	if filepath.Ext(romPath) == ".zip" {
-		r, err := zip.OpenReader(romPath)
+		r, err := zip.NewReader(romBytesReader, int64(len(romBytes)))
 		if err != nil {
 			return fmt.Errorf("failed to open zip archive: %w", err)
 		}
-		defer lib.DeferErr(r.Close)
 
-		settings, err := gamespec.GetGameSettings(strings.ReplaceAll(filepath.Base(romPath), filepath.Ext(romPath), ""))
+		settings, err := config.LoadConfig(configBytes, gameName)
 		if err != nil {
 			return err
 		}
 
 		for _, p := range settings.ROMParts {
-			romBytes = append(romBytes, lib.Must(GetFileBytesFromZip(r.File, p.FileName))...)
-		}
-	} else {
-		var err error
-
-		romBytes, err = os.ReadFile(romPath)
-		if err != nil {
-			return fmt.Errorf("failed to read rom file: %w", err)
+			readableROMBytes = append(readableROMBytes, lib.Must(GetFileBytesFromZip(r.File, p.FileName))...)
 		}
 	}
 
 	var i uint16
 
-	for i < uint16(len(romBytes)) {
-		inst := cpu.InstByOpcode[romBytes[i]]
+	for i < uint16(len(readableROMBytes)) {
+		inst := cpu.InstByOpcode[readableROMBytes[i]]
 
 		var b strings.Builder
 
 		b.WriteString(fmt.Sprintf("%04x: ", i))
 
 		if inst.Length == 1 {
-			b.WriteString(fmt.Sprintf("%02x          ", romBytes[i]))
+			b.WriteString(fmt.Sprintf("%02x          ", readableROMBytes[i]))
 		}
 
 		if inst.Length == 2 {
-			b.WriteString(fmt.Sprintf("%02x %02x       ", romBytes[i], romBytes[i+1]))
+			b.WriteString(fmt.Sprintf("%02x %02x       ", readableROMBytes[i], readableROMBytes[i+1]))
 		}
 
 		if inst.Length == 3 {
-			b.WriteString(fmt.Sprintf("%02x %02x %02x    ", romBytes[i], romBytes[i+1], romBytes[i+2]))
+			b.WriteString(fmt.Sprintf("%02x %02x %02x    ", readableROMBytes[i], readableROMBytes[i+1], readableROMBytes[i+2]))
 		}
 
 		b.WriteString(inst.Name + " " + inst.Op1 + " " + inst.Op2)
