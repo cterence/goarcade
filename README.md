@@ -7,7 +7,9 @@ An arcade game emulator based on the Intel 8080 CPU, written in Golang. It can p
 - Passes common 8080 CPU tests
 - Timing accurate (CPU @ 2MHz, UI @ 60Hz)
 - Performance optimized, uses <10% of a CPU core (tested on a Ryzen 5 2600 CPU) when running at 2MHz
-- SDL3 UI without needing CGo using [zyko0/go-sdl3](https://github.com/Zyko0/go-sdl3)
+- SDL3 UI without needing CGo at build time using [zyko0/go-sdl3](https://github.com/Zyko0/go-sdl3)
+- Compatible with MAME archive games
+- Game support configurable without rebuild using [config.yaml](./config.yaml)
 - Comprehensive CLI interface
 - Audio support (numbered WAV files: 0.wav, 1.wav...)
 - Pause, reset, save states
@@ -24,7 +26,7 @@ TODO:
 
 ## Usage
 
-No game ROM included, do your own research :)
+No game ROM included, do your own research :) (mame archive)
 
 ```bash
 # Download dependencies

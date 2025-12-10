@@ -1,11 +1,13 @@
 gameSpecs:
+  # MAME game name
   invaders:
+    # Ordered file list to load (must be found inside game .zip archive)
     romParts:
       - fileName: invaders.h
         startAddr: 0x0
         expectedSize: 0x800
       - fileName: invaders.g
-        startAddr: 0x801
+        startAddr: 0x800
         expectedSize: 0x800
       - fileName: invaders.f
         startAddr: 0x1000
@@ -13,6 +15,7 @@ gameSpecs:
       - fileName: invaders.e
         startAddr: 0x1800
         expectedSize: 0x800
+    # Optional: rectangular pixel color overlays (ARGB format)
     colorOverlays:
       - yMin: 32
         yMax: 61
@@ -43,6 +46,7 @@ gameSpecs:
       - fileName: pv05
         startAddr: 0x4000
         expectedSize: 0x800
+    # Optional: PROMs containing color data, takes precedence on color overlays
     colorPROMs:
       - fileName: pv06.1
         expectedSize: 0x400
