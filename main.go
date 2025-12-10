@@ -68,6 +68,7 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:        "config",
+				Aliases:     []string{"c"},
 				Usage:       "config file path",
 				Value:       "./config.yaml",
 				TakesFile:   true,
@@ -76,6 +77,7 @@ func main() {
 
 			&cli.StringFlag{
 				Name:        "state",
+				Aliases:     []string{"s"},
 				Usage:       "save state file path",
 				TakesFile:   true,
 				Destination: &saveStatePath,
@@ -83,7 +85,7 @@ func main() {
 
 			&cli.StringFlag{
 				Name:        "sound-dir",
-				Aliases:     []string{"s"},
+				Aliases:     []string{"sd"},
 				Usage:       "directory path for WAV sound files",
 				TakesFile:   true,
 				Destination: &soundDir,
@@ -111,11 +113,13 @@ func main() {
 
 			&cli.BoolFlag{
 				Name:        "headless",
+				Aliases:     []string{"hl"},
 				Usage:       "run without UI window",
 				Destination: &headless,
 			},
 			&cli.BoolFlag{
 				Name:        "mute",
+				Aliases:     []string{"m"},
 				Usage:       "run without audio",
 				Destination: &mute,
 			},

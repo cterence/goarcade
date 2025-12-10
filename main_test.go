@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 }
 
 func runCPUTest(t *testing.T, testFileName, expected string) {
-	cmd := exec.Command(os.Args[0], "--cpm", "--unthrottle", "--headless", "./sub/8080/cpu_tests/"+testFileName)
+	cmd := exec.Command(os.Args[0], "--cpm", "-u", "--hl", "./sub/8080/cpu_tests/"+testFileName)
 
 	cmd.Env = append(os.Environ(), "GO_WANT_HELPER_PROCESS=1")
 	out, err := cmd.Output()

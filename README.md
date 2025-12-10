@@ -34,7 +34,7 @@ No game ROM included, do your own research :)
 > go build
 
 # Help
-> ./goarcade --help
+> ./goarcade help
 NAME:
    goarcade - Intel 8080 arcade emulator
 
@@ -46,18 +46,19 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --pprof, -p                    run pprof webserver on localhost:6060
-   --state string                 save state file
-   --debug, -d                    print debug logs
-   --headless                     run without UI window
-   --sound-dir string, -s string  directory path for WAV sound files
-   --no-audio                     run without audio
-   --cpm                          run in CP/M compatibility mode (for CPU tests)
-   --unthrottle, -u               do not throttle cpu at 2MHz
-   --help, -h                     show help
+   --config string, -c string       config file path (default: "./config.yaml")
+   --state string, -s string        save state file path
+   --sound-dir string, --sd string  directory path for WAV sound files
+   --pprof, -p                      run pprof webserver on localhost:6060
+   --debug, -d                      print debug logs
+   --headless, --hl                 run without UI window
+   --mute, -m                       run without audio
+   --cpm                            run in CP/M compatibility mode (for CPU tests)
+   --unthrottle, -u                 do not throttle cpu at 2MHz
+   --help, -h                       show help
 
 # Example: running space-invaders with sound
-./goarcade ./roms/invaders/invaders.zip -s ./roms/invaders/sounds
+./goarcade ./roms/invaders/invaders.zip --sd ./roms/invaders/sounds
 ```
 
 ## Controls
