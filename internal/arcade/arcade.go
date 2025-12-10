@@ -189,33 +189,24 @@ func Run(ctx context.Context, romBytes []uint8, configBytes []uint8, soundListBy
 
 	cpuCycles := uint64(0)
 
-	frameTicker := time.NewTicker(time.Second / FPS)
+	// FPS * 2 so that the half and full VBLANK interrupts fire at the correct timing
+	frameTicker := time.NewTicker(time.Second / (FPS * 2))
 	defer frameTicker.Stop()
 
 	if a.unthrottle {
 		for a.cpu.Running {
-			cpuCycles += uint64(a.cpu.Step())
-
-			if cpuCycles >= CPU_TPS_PER_FRAME {
-				cpuCycles = 0
-
-				if !a.headless {
-					a.ui.Step()
-				}
-			}
+			a.cpu.Step()
 		}
 	}
 
 	for a.cpu.Running {
 		select {
 		case <-frameTicker.C:
-			for !a.ui.Paused && cpuCycles < CPU_TPS_PER_FRAME {
+			for !a.ui.Paused && cpuCycles < CPU_TPS_PER_FRAME/2 {
 				cpuCycles += uint64(a.cpu.Step())
 			}
 
-			if cpuCycles >= CPU_TPS_PER_FRAME {
-				cpuCycles = 0
-			}
+			cpuCycles = 0
 
 			if !a.headless {
 				a.ui.Step()
@@ -237,7 +228,7 @@ func (a *arcade) Reset() {
 
 	a.cpu.Init(cpuPC, a.cpuOpts...)
 
-	if !a.headless {
+	if !a.headless && !a.unthrottle {
 		a.ui.Init()
 
 		if !a.mute {

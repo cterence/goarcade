@@ -45,7 +45,8 @@ type UI struct {
 	colors      [WIDTH][HEIGHT]uint32
 	framebuffer [WIDTH * HEIGHT * PIXEL_BYTES]uint8
 
-	Paused bool
+	Paused     bool
+	startYDraw int
 }
 
 const (
@@ -63,6 +64,7 @@ const (
 
 func (ui *UI) Init() {
 	ui.Paused = false
+	ui.startYDraw = 0
 	ui.computeColorLUT()
 
 	err := sdl.Init(sdl.INIT_VIDEO)
@@ -109,7 +111,10 @@ func (ui *UI) Step() {
 }
 
 func (ui *UI) drawVRAM() {
-	for y := range HEIGHT {
+	y := ui.startYDraw
+
+	// Draw half the frame so that the UI requests half and full VBLANK interrupts at the correct CPU timing
+	for y < ui.startYDraw+HEIGHT/2 {
 		row := ui.framebuffer[y*int(ui.surface.Pitch) : y*int(ui.surface.Pitch)+WIDTH*PIXEL_BYTES]
 		for x := range WIDTH {
 			addr := VRAM_START + uint16(x*(HEIGHT/8)) + uint16((HEIGHT-y-1)/8)
@@ -124,14 +129,18 @@ func (ui *UI) drawVRAM() {
 			binary.LittleEndian.PutUint32(row[x*PIXEL_BYTES:], color)
 		}
 
-		if y == HEIGHT/2 && !ui.Paused {
+		if y == (HEIGHT/2)-1 && !ui.Paused {
 			ui.CPU.RequestInterrupt(1)
 		}
 
 		if y == HEIGHT-1 && !ui.Paused {
 			ui.CPU.RequestInterrupt(2)
 		}
+
+		y++
 	}
+
+	ui.startYDraw = y % HEIGHT
 
 	if err := ui.texture.Update(nil, ui.framebuffer[:], ui.surface.Pitch); err != nil {
 		panic("failed to update texture: " + err.Error())

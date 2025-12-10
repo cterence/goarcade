@@ -14,19 +14,9 @@ An arcade game emulator based on the Intel 8080 CPU, written in Golang. It can p
 - Audio support (numbered WAV files: 0.wav, 1.wav...)
 - Pause, reset, save states
 
-TODO:
-
-- [x] Read MAME .zip archives
-- [x] Game name in save state file name
-- [x] Code for supporting other games (sound file mappings, i/o, memory mappings)
-- [x] Create config structure for gamespecs (add support for games without rebuild)
-- [x] Only main.go should open files and send bytes to arcade
-- [ ] Make all IO ports configurable as gamespec
-- [ ] Help screen to show controls
-
 ## Usage
 
-No game ROM included, do your own research :) (mame archive)
+No game ROM included, do your own research :) (MAME archive)
 
 ```bash
 # Download dependencies
