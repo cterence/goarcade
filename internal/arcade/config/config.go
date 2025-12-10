@@ -26,10 +26,24 @@ type ColorOverlay struct {
 	Color uint32 `yaml:"color"`
 }
 
+type activePosition string
+
+const (
+	POSITION_LOW  activePosition = "low"
+	POSITION_HIGH activePosition = "high"
+)
+
+type Port struct {
+	Bit    uint8 `yaml:"bit"`
+	Active bool  `yaml:"active"`
+	// ActivePosition activePosition `yaml:"activePosition"`
+}
+
 type GameSpec struct {
-	ROMParts      []ROMPart      `yaml:"romParts"`
-	ColorOverlays []ColorOverlay `yaml:"colorOverlays"`
-	ColorPROMs    []ColorPROM    `yaml:"colorPROMs"`
+	InPorts       map[int][8]Port `yaml:"inPorts"`
+	ROMParts      []ROMPart       `yaml:"romParts"`
+	ColorOverlays []ColorOverlay  `yaml:"colorOverlays"`
+	ColorPROMs    []ColorPROM     `yaml:"colorPROMs"`
 }
 
 type Config struct {

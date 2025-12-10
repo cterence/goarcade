@@ -8,6 +8,8 @@ import (
 )
 
 type APU struct {
+	SoundListBytes [][]uint8
+
 	streams  []*sdl.AudioStream
 	sounds   [][]uint8
 	looping  []bool
@@ -15,8 +17,8 @@ type APU struct {
 	device   sdl.AudioDeviceID
 }
 
-func (a *APU) Init(soundListBytes [][]uint8) {
-	if len(soundListBytes) == 0 {
+func (a *APU) Init() {
+	if len(a.SoundListBytes) == 0 {
 		fmt.Println("warning: sound files not loaded, audio disabled")
 
 		return
@@ -38,12 +40,12 @@ func (a *APU) Init(soundListBytes [][]uint8) {
 		panic("failed to get default playback audio device: " + err.Error())
 	}
 
-	a.streams = make([]*sdl.AudioStream, len(soundListBytes))
-	a.sounds = make([][]uint8, len(soundListBytes))
-	a.looping = make([]bool, len(soundListBytes))
-	a.loopStop = make([]chan struct{}, len(soundListBytes))
+	a.streams = make([]*sdl.AudioStream, len(a.SoundListBytes))
+	a.sounds = make([][]uint8, len(a.SoundListBytes))
+	a.looping = make([]bool, len(a.SoundListBytes))
+	a.loopStop = make([]chan struct{}, len(a.SoundListBytes))
 
-	for i, b := range soundListBytes {
+	for i, b := range a.SoundListBytes {
 		soundIOStream, err := sdl.IOFromBytes(b)
 		if err != nil {
 			panic("failed to create sound IO stream: " + err.Error())

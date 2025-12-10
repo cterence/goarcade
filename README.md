@@ -16,7 +16,7 @@ An arcade game emulator based on the Intel 8080 CPU, written in Golang. It can p
 
 ## Usage
 
-No game ROM included, do your own research :) (MAME archive)
+No game ROM included, do your own research :)
 
 ```bash
 # Download dependencies

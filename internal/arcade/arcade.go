@@ -39,8 +39,7 @@ type arcade struct {
 	apu    *apu.APU
 	cancel context.CancelFunc
 
-	soundListBytes [][]uint8
-	saveState      string
+	saveState string
 
 	romPath string
 
@@ -99,13 +98,12 @@ func Run(ctx context.Context, romBytes []uint8, configBytes []uint8, soundListBy
 	}
 
 	a := arcade{
-		cpu:            &cpu.CPU{},
-		memory:         &memory.Memory{},
-		ui:             &ui.UI{},
-		apu:            &apu.APU{},
-		cancel:         cancel,
-		romPath:        romPath,
-		soundListBytes: soundListBytes,
+		cpu:     &cpu.CPU{},
+		memory:  &memory.Memory{},
+		ui:      &ui.UI{},
+		apu:     &apu.APU{},
+		cancel:  cancel,
+		romPath: romPath,
 	}
 
 	a.cpu.Bus = a.memory
@@ -115,6 +113,8 @@ func Run(ctx context.Context, romBytes []uint8, configBytes []uint8, soundListBy
 	a.ui.Bus = a.memory
 	a.ui.CPU = a.cpu
 	a.ui.APU = a.apu
+
+	a.apu.SoundListBytes = soundListBytes
 
 	for _, o := range options {
 		o(&a)
@@ -145,6 +145,7 @@ func Run(ctx context.Context, romBytes []uint8, configBytes []uint8, soundListBy
 		}
 
 		a.ui.ColorOverlays = config.ColorOverlays
+		a.cpu.InPorts = config.InPorts
 
 		a.Reset()
 
@@ -232,7 +233,7 @@ func (a *arcade) Reset() {
 		a.ui.Init()
 
 		if !a.mute {
-			a.apu.Init(a.soundListBytes)
+			a.apu.Init()
 		}
 	}
 }

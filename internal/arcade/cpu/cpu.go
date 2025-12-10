@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/cterence/goarcade/internal/arcade/config"
 )
 
 type bus interface {
@@ -28,7 +30,7 @@ type CPU struct {
 }
 
 type state struct {
-	Debug bool
+	InPorts map[int][8]config.Port
 
 	// Cycle counter
 	Cyc uint64
@@ -39,6 +41,11 @@ type state struct {
 
 	// Shift register
 	SR uint16
+
+	// IO ports
+	ioPorts [8]uint8
+	Debug   bool
+
 	// Shift offset
 	SO uint8
 
@@ -54,9 +61,6 @@ type state struct {
 
 	// Interrupt switch
 	Interrupts bool
-
-	// IO ports
-	IOPorts [8]uint8
 }
 
 type Option func(*CPU)
@@ -83,7 +87,16 @@ func (c *CPU) Init(pc uint16, options ...Option) {
 	c.A = 0
 	c.F = 2
 	c.Interrupts = false
-	c.IOPorts = [8]uint8{}
+
+	for id, port := range c.InPorts {
+		for _, portBit := range port {
+			if portBit.Active {
+				c.ioPorts[id] |= 1 << portBit.Bit
+			} else {
+				c.ioPorts[id] &= ^(1 << portBit.Bit)
+			}
+		}
+	}
 
 	for _, o := range options {
 		o(c)
@@ -134,9 +147,9 @@ func (c *CPU) RequestInterrupt(num uint8) {
 
 func (c *CPU) SendInput(port, bit uint8, value bool) {
 	if value {
-		c.IOPorts[port] |= 1 << bit
+		c.ioPorts[port] |= 1 << bit
 	} else {
-		c.IOPorts[port] &= ^(1 << bit)
+		c.ioPorts[port] &= ^(1 << bit)
 	}
 }
 

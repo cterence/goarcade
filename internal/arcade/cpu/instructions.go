@@ -339,7 +339,7 @@ func portIn(c *CPU, _ string) {
 	case 3:
 		c.A = uint8(c.SR >> (8 - c.SO))
 	default:
-		c.A = c.IOPorts[portNumber]
+		c.A = c.ioPorts[portNumber]
 	}
 }
 
@@ -370,8 +370,8 @@ func portOut(c *CPU, _ string) {
 	case 2:
 		c.SO = c.A & 0x7
 	case 3:
-		rising := c.A & ^c.IOPorts[portNumber]
-		falling := c.IOPorts[portNumber] & ^c.A
+		rising := c.A & ^c.ioPorts[portNumber]
+		falling := c.ioPorts[portNumber] & ^c.A
 
 		switch {
 		case rising&1 == 1:
@@ -386,11 +386,11 @@ func portOut(c *CPU, _ string) {
 			c.APU.PlaySound(3)
 		}
 
-		c.IOPorts[portNumber] = c.A
+		c.ioPorts[portNumber] = c.A
 	case 4:
 		c.SR = uint16(c.A)<<8 | c.SR>>8
 	case 5:
-		rising := c.A & ^c.IOPorts[portNumber]
+		rising := c.A & ^c.ioPorts[portNumber]
 
 		switch {
 		case rising&1 == 1:
@@ -405,7 +405,7 @@ func portOut(c *CPU, _ string) {
 			c.APU.PlaySound(8)
 		}
 
-		c.IOPorts[portNumber] = c.A
+		c.ioPorts[portNumber] = c.A
 	case 6: // NOP for watchdog
 	default:
 		fmt.Printf("unimplemented out port: %02x\n", portNumber)

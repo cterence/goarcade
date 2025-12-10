@@ -29,6 +29,46 @@ gameSpecs:
         yMax: 256
         color: 0xFF00FF00
 
+    inPorts:
+      2:
+        - bit: 0 # DIP switch 1: 00 = 3 lives ; 01 = 5 lives
+          active: false
+        - bit: 1 # DIP switch 2: 10 = 4 lives ; 11 = 6 lives
+          active: false
+        - bit: 2
+          active: false
+        - bit: 3
+          active: false
+        - bit: 7
+          active: true
+
+  tst_invd:
+    romParts:
+      - fileName: test.h
+        startAddr: 0x0
+        expectedSize: 0x800
+      - fileName: invaders.g
+        startAddr: 0x800
+        expectedSize: 0x800
+      - fileName: invaders.f
+        startAddr: 0x1000
+        expectedSize: 0x800
+      - fileName: invaders.e
+        startAddr: 0x1800
+        expectedSize: 0x800
+    colorOverlays:
+      - yMin: 32
+        yMax: 61
+        color: 0xFFFF0000
+      - yMin: 184
+        yMax: 240
+        color: 0xFF00FF00
+      - xMin: 16
+        xMax: 128
+        yMin: 241
+        yMax: 256
+        color: 0xFF00FF00
+
   invadpt2:
     romParts:
       - fileName: pv01
