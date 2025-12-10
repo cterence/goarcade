@@ -15,7 +15,7 @@ gameSpecs:
         expectedSize: 0x800
     colorOverlays:
       - yMin: 32
-        yMax: 62
+        yMax: 61
         color: 0xFFFF0000
       - yMin: 184
         yMax: 240
