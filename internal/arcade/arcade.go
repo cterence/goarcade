@@ -139,22 +139,22 @@ func Run(ctx context.Context, romBytes []uint8, configBytes []uint8, soundListBy
 			return fmt.Errorf("failed to open zip archive: %w", err)
 		}
 
-		settings, err := config.LoadConfig(configBytes, gameName)
+		config, err := config.LoadConfig(configBytes, gameName)
 		if err != nil {
 			return err
 		}
 
-		a.ui.ColorOverlays = settings.ColorOverlays
+		a.ui.ColorOverlays = config.ColorOverlays
 
 		a.Reset()
 
-		for _, p := range settings.ROMParts {
+		for _, p := range config.ROMParts {
 			if err := a.LoadBytes(p.StartAddr, p.ExpectedSize, lib.Must(GetFileBytesFromZip(r.File, p.FileName))); err != nil {
 				return fmt.Errorf("failed to load %s", p.FileName)
 			}
 		}
 
-		for _, p := range settings.ColorPROMs {
+		for _, p := range config.ColorPROMs {
 			a.ui.ColorPROM = append(a.ui.ColorPROM, lib.Must(GetFileBytesFromZip(r.File, p.FileName))...)
 		}
 	} else {
@@ -293,12 +293,12 @@ func Disassemble(romBytes, configBytes []uint8, romPath string) error {
 			return fmt.Errorf("failed to open zip archive: %w", err)
 		}
 
-		settings, err := config.LoadConfig(configBytes, gameName)
+		config, err := config.LoadConfig(configBytes, gameName)
 		if err != nil {
 			return err
 		}
 
-		for _, p := range settings.ROMParts {
+		for _, p := range config.ROMParts {
 			readableROMBytes = append(readableROMBytes, lib.Must(GetFileBytesFromZip(r.File, p.FileName))...)
 		}
 	}

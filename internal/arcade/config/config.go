@@ -51,11 +51,11 @@ func LoadConfig(configBytes []uint8, gameName string) (*GameSpec, error) {
 
 	s, ok := config.GameSpecs[gameName]
 	if !ok {
-		return nil, fmt.Errorf("no compatibility settings for game: %s", gameName)
+		return nil, fmt.Errorf("no specs for game: %s", gameName)
 	}
 
 	if err := validateConfig(&s); err != nil {
-		return nil, fmt.Errorf("settings validation failed: %w", err)
+		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
 
 	return &s, nil

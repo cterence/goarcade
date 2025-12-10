@@ -5,7 +5,7 @@ gameSpecs:
         startAddr: 0x0
         expectedSize: 0x800
       - fileName: invaders.g
-        startAddr: 0x800
+        startAddr: 0x801
         expectedSize: 0x800
       - fileName: invaders.f
         startAddr: 0x1000
