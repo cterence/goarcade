@@ -135,3 +135,71 @@ gameSpecs:
         expectedSize: 0x400
       - fileName: tn07
         expectedSize: 0x400
+
+  searthin:
+    # Ordered file list to load (must be found inside game .zip archive)
+    romParts:
+      - fileName: earthinv.h
+        startAddr: 0x0
+        expectedSize: 0x800
+      - fileName: earthinv.g
+        startAddr: 0x800
+        expectedSize: 0x800
+      - fileName: earthinv.f
+        startAddr: 0x1000
+        expectedSize: 0x800
+      - fileName: earthinv.e
+        startAddr: 0x1800
+        expectedSize: 0x800
+    colorOverlays:
+      - yMin: 32
+        yMax: 61
+        color: 0xFFFF0000
+      - yMin: 184
+        yMax: 240
+        color: 0xFF00FF00
+      - xMin: 16
+        xMax: 128
+        yMin: 241
+        yMax: 256
+        color: 0xFF00FF00
+
+  supinvsion:
+    # Ordered file list to load (must be found inside game .zip archive)
+    romParts:
+      - fileName: h-am4708.bin
+        startAddr: 0x0
+        expectedSize: 0x400
+      - fileName: g-am4708.bin
+        startAddr: 0x400
+        expectedSize: 0x400
+      - fileName: f-am4708.bin
+        startAddr: 0x800
+        expectedSize: 0x400
+      - fileName: e-am4708.bin
+        startAddr: 0xC00
+        expectedSize: 0x400
+      - fileName: d-am4708.bin
+        startAddr: 0x1000
+        expectedSize: 0x400
+      - fileName: c-am4708.bin
+        startAddr: 0x1400
+        expectedSize: 0x400
+      - fileName: b-am4708.bin
+        startAddr: 0x1800
+        expectedSize: 0x400
+      - fileName: a-am4708.bin
+        startAddr: 0x1C00
+        expectedSize: 0x400
+    colorOverlays:
+      - yMin: 32
+        yMax: 61
+        color: 0xFFFF0000
+      - yMin: 184
+        yMax: 240
+        color: 0xFF00FF00
+      - xMin: 16
+        xMax: 128
+        yMin: 241
+        yMax: 256
+        color: 0xFF00FF00
