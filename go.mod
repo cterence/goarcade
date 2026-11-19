@@ -1,6 +1,6 @@
 module github.com/cterence/goarcade
 
-go 1.25.4
+go 1.26.5
 
 require (
 	github.com/goccy/go-yaml v1.19.0
@@ -15,8 +15,8 @@ require (
 )
 
 require (
-	github.com/Zyko0/go-sdl3 v0.0.0-20251209152213-f138e4c3d5ef
-	github.com/Zyko0/purego-gen v0.0.0-20250727121216-3bcd331a1e0c // indirect
-	github.com/ebitengine/purego v0.9.0-alpha.2.0.20250124174847-29f0104e3c2b // indirect
-	golang.org/x/sys v0.7.0 // indirect
+	github.com/Zyko0/go-sdl3 v0.1.4
+	github.com/Zyko0/purego-gen v0.0.2 // indirect
+	github.com/ebitengine/purego v0.10.2 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 )
